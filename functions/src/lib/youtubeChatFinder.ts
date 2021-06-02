@@ -16,20 +16,14 @@ export const findChatMessages = async (videoId: string) => {
   const visitor = findKey("visitorData", response.data);
   const client = findKey("clientVersion", response.data);
 
-  let superChatCount = 0;
-  let superChatAmount = 0;
-  let chatCount = 0;
-  let subscribeCount = 0;
+  const chats = [];
   let nextContinuation = continuation;
+
   for (;;) {
     const chatdataResponse = await fetchChatData(apiKey, nextContinuation, visitor, client);
-    const chats = chatdataResponse.data.continuationContents.liveChatContinuation.actions;
-    if (chats && chats.length > 0) {
-      const result = processChats(chats);
-      chatCount += result.chatCount;
-      superChatCount += result.superChatCount;
-      superChatAmount += result.superChatAmount;
-      subscribeCount += result.subscribeCount;
+    const chatActions = chatdataResponse.data.continuationContents.liveChatContinuation.actions;
+    if (chatActions && chatActions.length > 0) {
+      chats.push(chatActions);
     }
     const nextCont = chatdataResponse.data.continuationContents.liveChatContinuation.continuations.find((cont: any) => {
       return cont.liveChatReplayContinuationData !== undefined;
@@ -40,6 +34,12 @@ export const findChatMessages = async (videoId: string) => {
       break;
     }
   }
+
+  const result = processChats(chats.flat());
+  const chatCount = result.chatCount;
+  const superChatCount = result.superChatCount;
+  const superChatAmount = result.superChatAmount;
+  const subscribeCount = result.subscribeCount;
 
   return {
     chatCount: chatCount,

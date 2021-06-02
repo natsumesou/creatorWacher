@@ -16,10 +16,10 @@ export const WatchCreators = async (message: Message) => {
       try {
         const chats = await findChatMessages(videoId);
         await updateStream(videoId, chats);
-        bot.message(formatMessage(videoId, stream, chats));
+        bot.message(formatMessage(videoId, channel, stream, chats));
       } catch (err) {
         if (err instanceof ChatUnavailableError) {
-          bot.message(formatMessage(videoId, stream));
+          bot.message(formatMessage(videoId, channel, stream));
           bot.alert("チャットがオフになっていいる可能性が高いです\nhttps://www.youtube.com/watch?v=" + videoId);
           functions.logger.warn(videoId + ": チャットがオフになっている可能性が高いです");
         } else {
@@ -60,15 +60,20 @@ const updateStream = async (videoId: string, chats: any) => {
   await db.collection("Stream").doc(videoId).update(chats);
 };
 
-const formatMessage = (videoId: string, stream: any, chats?: any) => {
+const formatMessage = (videoId: string, channel: any, stream: any, chats?: any) => {
   let message = stream.title +
-    "\n視聴数: " + stream.viewCount;
+    "\nチャンネル: " + channel.title +
+    "\n視聴数: " + threeDigit(stream.viewCount);
   if (chats) {
-    message += "\nコメント数: " + chats.chatCount +
-    "\nスパチャ数: " + chats.superChatCount +
-    "\nスパチャ額: " + Math.round(chats.superChatAmount).toFixed(2).replace(/\d(?=(\d{3})+\.)/g, "$&,") + "円" +
-    "\n入会数: " + chats.subscribeCount;
+    message += "\nコメント数: " + threeDigit(chats.chatCount) +
+    "\nスパチャ数: " + threeDigit(chats.superChatCount) +
+    "\nスパチャ額: " + threeDigit(Math.round(chats.superChatAmount)) + "円" +
+    "\nメンバー入会数: " + threeDigit(chats.subscribeCount);
   }
   message += "\nhttps://www.youtube.com/watch?v=" + videoId;
   return message;
+};
+
+const threeDigit = (num: number) => {
+  return String(num).replace( /(\d)(?=(\d\d\d)+(?!\d))/g, "$1,");
 };
