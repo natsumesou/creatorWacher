@@ -35,18 +35,22 @@ export const findChatMessages = async (videoId: string) => {
     }
   }
 
-  const result = processChats(chats.flat());
-  const chatCount = result.chatCount;
-  const superChatCount = result.superChatCount;
-  const superChatAmount = result.superChatAmount;
-  const subscribeCount = result.subscribeCount;
+  try {
+    const result = processChats(chats.flat());
+    const chatCount = result.chatCount;
+    const superChatCount = result.superChatCount;
+    const superChatAmount = result.superChatAmount;
+    const subscribeCount = result.subscribeCount;
 
-  return {
-    chatCount: chatCount,
-    superChatCount: superChatCount,
-    superChatAmount: superChatAmount,
-    subscribeCount: subscribeCount,
-  };
+    return {
+      chatCount: chatCount,
+      superChatCount: superChatCount,
+      superChatAmount: superChatAmount,
+      subscribeCount: subscribeCount,
+    };
+  } catch (err) {
+    throw new Error(videoId + ":" + err);
+  }
 };
 
 const fetchVideoPage = async (videoId: string) => {
@@ -222,6 +226,12 @@ const rate = (unit: string) => {
       return 2.14;
     case "MYR":
       return 26.56;
+    case "₪":
+      return 33.6765;
+    case "DKK":
+      return 17.99;
+    case "CRC":
+      return 0.18;
     default:
       throw new Error("為替レートの処理中にエラーが発生しました:"+unit);
   }
