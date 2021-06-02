@@ -14,7 +14,7 @@ const weakRuntimeOpts: RuntimeOptions = {
   memory: "128MB",
 };
 const strongRuntimeOpts: RuntimeOptions = {
-  timeoutSeconds: 300,
+  timeoutSeconds: 540,
   memory: "512MB",
 };
 

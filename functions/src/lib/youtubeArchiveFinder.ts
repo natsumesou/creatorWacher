@@ -51,11 +51,11 @@ const parseJSONtoFindLatestStream = (json: any) => {
   });
   const streamLengthSec = stringToTimelength(overlay.thumbnailOverlayTimeStatusRenderer.text.simpleText);
   return {
-    videoId: stream.videoId,
+    id: stream.videoId,
     title: stream.title.runs[0].text,
-    publishedDate: publishedDate,
     viewCount: viewCount,
     streamLengthSec: streamLengthSec,
+    publishedAt: publishedDate,
     createdAt: now,
   };
 };

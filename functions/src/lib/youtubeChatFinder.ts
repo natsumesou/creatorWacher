@@ -3,6 +3,11 @@ import axios from "axios";
 const VIDEO_ENDPOINT = "https://www.youtube.com/watch";
 const CHAT_ENDPOINT = "https://www.youtube.com/youtubei/v1/live_chat/get_live_chat_replay";
 
+/**
+ * チャットがサポートされていないアーカイブをクロールした場合に、パースエラー等と切り分けるために用意。
+ */
+export class ChatUnavailableError extends Error {}
+
 export const findChatMessages = async (videoId: string) => {
   const response = await fetchVideoPage(videoId);
 
@@ -11,16 +16,37 @@ export const findChatMessages = async (videoId: string) => {
   const visitor = findKey("visitorData", response.data);
   const client = findKey("clientVersion", response.data);
 
-  const chatmeta = await fetchChatData(apiKey, continuation, visitor, client);
-  for (const cont of chatmeta.data.continuationContents.liveChatContinuation.continuations) {
-    if (cont.liveChatReplayContinuationData === undefined) {
-      continue;
+  let superChatCount = 0;
+  let superChatAmount = 0;
+  let chatCount = 0;
+  let subscribeCount = 0;
+  let nextContinuation = continuation;
+  for (;;) {
+    const chatdataResponse = await fetchChatData(apiKey, nextContinuation, visitor, client);
+    const chats = chatdataResponse.data.continuationContents.liveChatContinuation.actions;
+    if (chats && chats.length > 0) {
+      const result = processChats(chats);
+      chatCount += result.chatCount;
+      superChatCount += result.superChatCount;
+      superChatAmount += result.superChatAmount;
+      subscribeCount += result.subscribeCount;
     }
-    const continuationNext = cont.liveChatReplayContinuationData.continuation;
-    const chatmeta2 = await fetchChatData(apiKey, continuationNext, visitor, client);
-    console.log(JSON.stringify(chatmeta2.data.continuationContents.liveChatContinuation.continuations));
+    const nextCont = chatdataResponse.data.continuationContents.liveChatContinuation.continuations.find((cont: any) => {
+      return cont.liveChatReplayContinuationData !== undefined;
+    });
+    if (nextCont) {
+      nextContinuation = nextCont.liveChatReplayContinuationData.continuation;
+    } else {
+      break;
+    }
   }
-  // console.log(JSON.stringify(chatmeta.data.continuationContents.liveChatContinuation.actions[1]));
+
+  return {
+    chatCount: chatCount,
+    superChatCount: superChatCount,
+    superChatAmount: superChatAmount,
+    subscribeCount: subscribeCount,
+  };
 };
 
 const fetchVideoPage = async (videoId: string) => {
@@ -60,7 +86,11 @@ const fetchChatData = async (apiKey: string, continuation: string, visitor: stri
 };
 
 const findContinuation = (keyName: string, sourcee: string) => {
-  return findVariable(keyName, sourcee, 100); // continuationが複数あり、小さい値の方は偽物なので弾く。
+  try {
+    return findVariable(keyName, sourcee, 100); // continuationが複数あり、小さい値の方は偽物なので弾く。
+  } catch (error) {
+    throw new ChatUnavailableError("チャットがオフになっています");
+  }
 };
 
 const findKey = (keyName: string, source: string) => {
@@ -74,4 +104,125 @@ const findVariable = (keyName: string, source: string, minChar: number) => {
     throw new Error("動画ページ内の<" + keyName + ">が見つかりません。");
   }
   return match[1];
+};
+
+const processChats = (chats: Array<any>) => {
+  let superChatCount = 0;
+  let superChatAmount = 0;
+  let chatCount = 0;
+  let subscribeCount = 0;
+  chats.forEach((chat: any) => {
+    let c = 0;
+    chat.replayChatItemAction.actions.forEach((action: any) => {
+      if (c > 1) {
+        console.log("複数アクションあり:"+JSON.stringify(action));
+      }
+      c += 1;
+      if (action.addChatItemAction?.item?.liveChatPaidMessageRenderer !== undefined) {
+        // スパチャの処理が下とかぶるのでこちらは無視
+      }
+      if (action.addLiveChatTickerItemAction?.item?.liveChatTickerPaidMessageItemRenderer !== undefined) {
+        superChatCount += 1;
+        const amountText = action.addLiveChatTickerItemAction.item.liveChatTickerPaidMessageItemRenderer.amount.simpleText;
+        superChatAmount += stringToAmount(amountText);
+      }
+      if (action.addChatItemAction?.item?.liveChatTextMessageRenderer !== undefined) {
+        chatCount += 1;
+      }
+      if (action.addChatItemAction?.item?.liveChatMembershipItemRenderer !== undefined) {
+        subscribeCount += 1;
+      }
+      if (action.addChatItemAction?.item?.liveChatViewerEngagementMessageRenderer !== undefined ||
+        action.addChatItemAction?.item?.liveChatPlaceholderItemRenderer !== undefined) {
+        // NOTHING TO DO
+      }
+    });
+  });
+
+  return {
+    chatCount: chatCount,
+    superChatCount: superChatCount,
+    superChatAmount: superChatAmount,
+    subscribeCount: subscribeCount,
+  };
+};
+
+const stringToAmount = (str: string) => {
+  const match = str.match(/([^0-9]+)([0-9,.]+)/);
+  if (match === null) {
+    throw new Error("通貨の処理中にエラーが発生しました:" + str);
+  }
+  const price = parseFloat(match[2].replace(",", ""));
+  return price * rate(match[1]);
+};
+
+const rate = (unit: string) => {
+  switch (unit.trim()) {
+    case "$":
+      return 110.0;
+    case "A$":
+      return 73.67;
+    case "CA$":
+      return 77;
+    case "CHF":
+      return 113.0;
+    case "COP":
+      return 0.03;
+    case "HK$":
+      return 13.8;
+    case "HUF":
+      return 0.34;
+    case "MX$":
+      return 4.72;
+    case "NT$":
+      return 3;
+    case "NZ$":
+      return 68.86;
+    case "PHP":
+      return 2.14;
+    case "PLN":
+      return 27.01;
+    case "R$":
+      return 20.14;
+    case "RUB":
+      return 1.5;
+    case "SEK":
+      return 11.48;
+    case "£":
+      return 135.0;
+    case "₩":
+      return 0.1;
+    case "€":
+      return 120;
+    case "₹":
+      return 1.42;
+    case "¥":
+      return 1;
+    case "PEN":
+      return 30.56;
+    case "ARS":
+      return 1.53;
+    case "CLP":
+      return 0.13;
+    case "NOK":
+      return 11.08;
+    case "BAM":
+      return 61.44;
+    case "SGD":
+      return 77.02;
+    case "CZK":
+      return 4.49;
+    case "ZAR":
+      return 6.05;
+    case "RON":
+      return 25.91;
+    case "BYN":
+      return 43.16;
+    case "₱":
+      return 2.14;
+    case "MYR":
+      return 26.56;
+    default:
+      throw new Error("為替レートの処理中にエラーが発生しました:"+unit);
+  }
 };
