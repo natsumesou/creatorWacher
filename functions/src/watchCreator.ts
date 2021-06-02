@@ -23,7 +23,6 @@ const saveStream = async (channel: any, stream: any) => {
     delete stream.videoId;
     const result = Object.assign(stream, {
       channelId: channel.id,
-      createdAt: new Date(),
     });
     await docRef.set(result);
   }
