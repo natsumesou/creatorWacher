@@ -1,9 +1,12 @@
 import * as functions from "firebase-functions";
+import * as admin from "firebase-admin";
+import {publishCreatorsWatch} from "./publishCreatorsWatch";
+import {WatchCreators} from "./watchCreator";
 
-// // Start writing Firebase Functions
-// // https://firebase.google.com/docs/functions/typescript
-//
-// export const helloWorld = functions.https.onRequest((request, response) => {
-//   functions.logger.info("Hello logs!", {structuredData: true});
-//   response.send("Hello from Firebase!");
-// });
+admin.initializeApp();
+
+const REGION = "asia-northeast1";
+export const TOPIC = "watch-creator";
+
+export const publishCreatorsWatchFunction = functions.region(REGION).pubsub.schedule("every 5 minutes").onRun(publishCreatorsWatch);
+export const WatchCreatorsFunction = functions.region(REGION).pubsub.topic(TOPIC).onPublish(WatchCreators);
