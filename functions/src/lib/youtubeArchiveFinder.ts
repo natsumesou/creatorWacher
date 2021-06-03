@@ -79,7 +79,15 @@ const stringToNum = (str: string) => {
 
 const stringToTimelength = (str: string) => {
   const arr = str.split(":");
-  return (+arr[0]) * 60 * 60 + (+arr[1]) * 60 + (+arr[2]);
+  if (arr.length === 1) {
+    return +arr[0];
+  } else if (arr.length === 2) {
+    return (+arr[0]) * 60 + (+arr[1]);
+  } else if (arr.length === 3) {
+    return (+arr[0]) * 60 * 60 + (+arr[1]) * 60 + (+arr[2]);
+  } else {
+    throw new Error("配信時間の処理中にエラーが発生しました: " + str);
+  }
 };
 
 const stringToSecond = (num: number, unit: string) => {
