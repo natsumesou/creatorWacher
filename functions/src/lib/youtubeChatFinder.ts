@@ -232,6 +232,10 @@ const rate = (unit: string) => {
       return 17.99;
     case "CRC":
       return 0.18;
+    case "SAR":
+      return 29.21;
+    case "AED":
+      return 29.84;
     default:
       throw new Error("為替レートの処理中にエラーが発生しました:"+unit);
   }
