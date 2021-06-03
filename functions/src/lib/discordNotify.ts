@@ -10,12 +10,21 @@ export class Bot {
   private client: Client;
 
   /**
-   *
-   * @param {string} token Discord botのTOKEN
+   * private
    */
-  constructor(token: string) {
+  private constructor() {
     this.client = new Client();
-    this.client.login(token);
+  }
+
+  /**
+   *
+   * @param {string} token Discord BotのTOKEN
+   * @return {Bot} Botのインスタンスを返す
+   */
+  static init = async (token: string) => {
+    const bot = new Bot();
+    await bot.client.login(token);
+    return bot;
   }
 
   /**
