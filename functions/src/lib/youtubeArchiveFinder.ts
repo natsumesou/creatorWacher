@@ -2,10 +2,10 @@ import axios from "axios";
 
 const CHANNEL_ENDPOINT = "https://www.youtube.com/channel/";
 
-export const findArchivedStream = async (channelId: string) => {
+export const findArchivedStreams = async (channelId: string) => {
   const response = await fetchVideoArchive(channelId);
   const initData = getInitialJSON(response.data);
-  return parseJSONtoFindLatestStream(initData);
+  return parseJSONtoFindStreams(initData);
 };
 
 const fetchVideoArchive = async (channelId: string) => {
@@ -31,18 +31,23 @@ const getInitialJSON = (html: string) => {
   return JSON.parse(match[1]);
 };
 
-const parseJSONtoFindLatestStream = (json: any) => {
+const parseJSONtoFindStreams = (json: any) => {
   const videos = json.contents.twoColumnBrowseResultsRenderer.tabs[1].tabRenderer.content.sectionListRenderer.contents[0];
   if (videos.itemSectionRenderer.contents[0].gridRenderer === undefined) {
     // 動画が1つもない場合(音楽系チャンネルだとたまに検索でヒットするけど動画ページが空の場合がある)
-    // TBD
   }
-  const latestArchivedStreamRef = videos.itemSectionRenderer.contents[0].gridRenderer.items.find((item: any) => {
+  const streams = videos.itemSectionRenderer.contents[0].gridRenderer.items.reduce((result: Array<any>, item: any) => {
     // live予定やプレミアム公開、動画の場合はスキップし続ける
-    return item.gridVideoRenderer.publishedTimeText !== undefined &&
-      item.gridVideoRenderer.publishedTimeText.simpleText.includes("配信済み");
-  });
-  const stream = latestArchivedStreamRef.gridVideoRenderer;
+    const publishedDateText = item.gridVideoRenderer?.publishedTimeText?.simpleText || "";
+    if (publishedDateText.includes("配信済み") && isRecursiveLimit(publishedDateText)) {
+      result.push(item.gridVideoRenderer);
+    }
+    return result;
+  }, []);
+  return streams.map((stream:any) => formatStream(stream));
+};
+
+const formatStream = (stream: any) => {
   const now = new Date();
   const publishedDate = stringToDatetime(stream.publishedTimeText.simpleText.replace(/\sに配信済み/, ""), now);
   const viewCount = stringToNum(stream.viewCountText.simpleText.replace(/\s回視聴/, ""));
@@ -58,6 +63,19 @@ const parseJSONtoFindLatestStream = (json: any) => {
     publishedAt: publishedDate,
     createdAt: now,
   };
+};
+
+/**
+ * 一ヶ月前までのアーカイブを取得する
+ * @param {string} text アーカイブの配信日時のテキスト
+ * @return {boolean} 取得すべきかを返す
+ */
+const isRecursiveLimit = (text: string) => {
+  return text.includes("秒前") ||
+  text.includes("分前") ||
+  text.includes("時間前") ||
+  text.includes("日前") ||
+  text.includes("週間前");
 };
 
 const stringToDatetime = (relative: string, now: Date) => {
