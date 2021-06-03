@@ -10,36 +10,29 @@ export class Bot {
   private client: Client;
 
   /**
-   * private
-   */
-  private constructor() {
-    this.client = new Client();
-  }
-
-  /**
    *
-   * @param {string} token Discord BotのTOKEN
-   * @return {Bot} Botのインスタンスを返す
+   * @param {string} token Discord botのTOKEN
    */
-  static init = async (token: string) => {
-    const bot = new Bot();
-    await bot.client.login(token);
-    return bot;
+  constructor(token: string) {
+    this.client = new Client();
+    this.client.login(token); // loginが返ってこないことがある。ログインできてないと各メソッドがエラーを返す。async/awaitで実装すると延々と処理をブロックするので禁止。
   }
 
   /**
    *
    * @param {string} message チャットに送信するメッセージ
    */
-  message(message: string) {
-    (this.client.channels.cache.get(GENERAL_CHANNEL_ID) as TextChannel).send(message);
+  async message(message: string) {
+    const channel = await this.client.channels.cache.get(GENERAL_CHANNEL_ID) as TextChannel;
+    channel.send(message);
   }
 
   /**
    *
    * @param {string} message アラートを飛ばすメッセージ
    */
-  alert(message: string) {
-    (this.client.channels.cache.get(SYSTEM_CHANNEL_ID) as TextChannel).send(message);
+  async alert(message: string) {
+    const channel = await this.client.channels.cache.get(SYSTEM_CHANNEL_ID) as TextChannel;
+    channel.send(message);
   }
 }

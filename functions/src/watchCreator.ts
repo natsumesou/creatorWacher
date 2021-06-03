@@ -6,7 +6,7 @@ import {findChatMessages, ChatUnavailableError} from "./lib/youtubeChatFinder";
 import {Bot} from "./lib/discordNotify";
 
 export const WatchCreators = async (message: Message) => {
-  const bot = await Bot.init(functions.config().discord.token);
+  const bot = new Bot(functions.config().discord.token);
   try {
     const channel = messageToJSON(message);
     const stream = await findArchivedStream(channel.id);
@@ -16,11 +16,11 @@ export const WatchCreators = async (message: Message) => {
       try {
         const chats = await findChatMessages(videoId);
         await updateStream(videoId, chats);
-        bot.message(formatMessage(videoId, channel, stream, chats));
+        await bot.message(formatMessage(videoId, channel, stream, chats));
       } catch (err) {
         if (err instanceof ChatUnavailableError) {
-          bot.message(formatMessage(videoId, channel, stream));
-          bot.alert("チャットがオフになっていいる可能性が高いです\nhttps://www.youtube.com/watch?v=" + videoId);
+          await bot.message(formatMessage(videoId, channel, stream));
+          await bot.alert("チャットがオフになっていいる可能性が高いです\nhttps://www.youtube.com/watch?v=" + videoId);
           functions.logger.warn(videoId + ": チャットがオフになっている可能性が高いです");
         } else {
           throw err;
@@ -28,7 +28,7 @@ export const WatchCreators = async (message: Message) => {
       }
     }
   } catch (err) {
-    bot.alert(err.toString());
+    await bot.alert(err.toString());
     throw err;
   }
 };
