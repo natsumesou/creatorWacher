@@ -1,21 +1,20 @@
-import {Client, TextChannel} from "discord.js";
-
-const GENERAL_CHANNEL_ID = "848982018577793068";
-const SYSTEM_CHANNEL_ID = "849651263410667520";
+import axios from "axios";
 
 /**
  * Discord通知用のクラス
  */
 export class Bot {
-  private client: Client;
+  private generalWebhook: string;
+  private systemWebhook: string;
 
   /**
    *
-   * @param {string} token Discord botのTOKEN
+   * @param {string} generalWebhook 一般チャットの webhook url
+   * @param {string} systemWebhook systemチャットの webhook url
    */
-  constructor(token: string) {
-    this.client = new Client();
-    this.client.login(token); // loginが返ってこないことがある。ログインできてないと各メソッドがエラーを返す。async/awaitで実装すると延々と処理をブロックするので禁止。
+  constructor(generalWebhook: string, systemWebhook: string) {
+    this.generalWebhook = generalWebhook;
+    this.systemWebhook = systemWebhook;
   }
 
   /**
@@ -23,8 +22,7 @@ export class Bot {
    * @param {string} message チャットに送信するメッセージ
    */
   async message(message: string) {
-    const channel = await this.client.channels.cache.get(GENERAL_CHANNEL_ID) as TextChannel;
-    channel.send(message);
+    await axios.post(this.generalWebhook, {content: message});
   }
 
   /**
@@ -32,7 +30,6 @@ export class Bot {
    * @param {string} message アラートを飛ばすメッセージ
    */
   async alert(message: string) {
-    const channel = await this.client.channels.cache.get(SYSTEM_CHANNEL_ID) as TextChannel;
-    channel.send(message);
+    await axios.post(this.systemWebhook, {content: message});
   }
 }

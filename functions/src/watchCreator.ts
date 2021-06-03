@@ -6,7 +6,7 @@ import {findChatMessages, ChatUnavailableError} from "./lib/youtubeChatFinder";
 import {Bot} from "./lib/discordNotify";
 
 export const WatchCreators = async (message: Message) => {
-  const bot = new Bot(functions.config().discord.token);
+  const bot = new Bot(functions.config().discord.general, functions.config().discord.system);
   try {
     const channel = messageToJSON(message);
     const stream = await findArchivedStream(channel.id);
@@ -28,7 +28,7 @@ export const WatchCreators = async (message: Message) => {
       }
     }
   } catch (err) {
-    await bot.alert(err.toString());
+    await bot.alert(err.message);
     throw err;
   }
 };
