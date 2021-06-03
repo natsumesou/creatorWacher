@@ -42,22 +42,28 @@ const saveStream = async (channel: any, stream: any) => {
   const videoId = stream.id;
   const db = admin.firestore();
   const docRef = db.collection("Stream").doc(videoId);
-  const doc = await docRef.get();
+  const doc = await docRef.get().catch((err) => {
+    functions.logger.error(err.message);
+  });
 
-  if (doc.exists) {
+  if (doc && doc.exists) {
     return false;
   }
   delete stream.id;
   const result = Object.assign(stream, {
     channelId: channel.id,
   });
-  await docRef.set(result);
+  await docRef.set(result).catch((err) => {
+    functions.logger.error(err.message);
+  });
   return true;
 };
 
 const updateStream = async (videoId: string, chats: any) => {
   const db = admin.firestore();
-  await db.collection("Stream").doc(videoId).update(chats);
+  await db.collection("Stream").doc(videoId).update(chats).catch((err) => {
+    functions.logger.error(err.message);
+  });
 };
 
 const formatMessage = (videoId: string, channel: any, stream: any, chats?: any) => {
@@ -69,6 +75,8 @@ const formatMessage = (videoId: string, channel: any, stream: any, chats?: any) 
     "\nスパチャ数: " + threeDigit(chats.superChatCount) +
     "\nスパチャ額: " + threeDigit(Math.round(chats.superChatAmount)) + "円" +
     "\nメンバー入会数: " + threeDigit(chats.subscribeCount);
+  } else {
+    message += "\n詳細データの取得に失敗しました(チャットログが非表示の可能性があります)";
   }
   message += "\nhttps://www.youtube.com/watch?v=" + videoId;
   return message;
