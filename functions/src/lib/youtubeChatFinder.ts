@@ -240,69 +240,69 @@ const rate = (unit: string) => {
     case "$":
       return 110.0;
     case "A$":
-      return 73.67;
+      return 84.48;
     case "CA$":
-      return 77;
+      return 91.12;
     case "CHF":
-      return 113.0;
+      return 122.08;
     case "COP":
-      return 0.03;
+      return 0.030;
     case "HK$":
-      return 13.8;
+      return 14.22;
     case "HUF":
-      return 0.34;
+      return 0.39;
     case "MX$":
-      return 4.72;
+      return 5.47;
     case "NT$":
-      return 3;
+      return 3.97;
     case "NZ$":
-      return 68.86;
+      return 78.80;
     case "PHP":
-      return 2.14;
+      return 2.31;
     case "PLN":
-      return 27.01;
+      return 29.98;
     case "R$":
-      return 20.14;
+      return 21.72;
     case "RUB":
-      return 1.5;
+      return 1.51;
     case "SEK":
-      return 11.48;
+      return 13.23;
     case "£":
-      return 135.0;
+      return 155.61;
     case "₩":
-      return 0.1;
+      return 0.099;
     case "€":
-      return 120;
+      return 133.77;
     case "₹":
-      return 1.42;
+      return 1.51;
     case "¥":
       return 1;
     case "PEN":
-      return 30.56;
+      return 28.84;
     case "ARS":
-      return 1.53;
+      return 1.16;
     case "CLP":
-      return 0.13;
+      return 0.15;
     case "NOK":
-      return 11.08;
+      return 13.16;
     case "BAM":
-      return 61.44;
+      return 68.76;
     case "SGD":
-      return 77.02;
+      return 83.05;
     case "CZK":
-      return 4.49;
+      return 5.25;
     case "ZAR":
-      return 6.05;
+      return 8.09;
     case "RON":
-      return 25.91;
+      return 27.18;
     case "BYN":
-      return 43.16;
+      return 43.50;
     case "₱":
-      return 2.14;
+      return 2.31;
     case "MYR":
-      return 26.56;
+      return 26.76;
     case "₪":
-      return 33.6765;
+      return 33.87;
     case "DKK":
       return 17.99;
     case "CRC":
@@ -315,6 +315,24 @@ const rate = (unit: string) => {
       return 2.51;
     case "HNL":
       return 4.58;
+    case "MAD":
+      return 12.49;
+    case "BGN":
+      return 68.16;
+    case "GTQ":
+      return 14.29;
+    case "EGP":
+      return 7.03;
+    case "ISK":
+      return 0.91;
+    case "BOB":
+      return 15.99;
+    case "RSD":
+      return 1.14;
+    case "TRY":
+      return 12.66;
+    case "HRK":
+      return 17.82;
     default:
       throw new Error("為替レートの処理中にエラーが発生しました:"+unit);
   }
