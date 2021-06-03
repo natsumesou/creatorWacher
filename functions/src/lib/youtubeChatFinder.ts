@@ -313,6 +313,8 @@ const rate = (unit: string) => {
       return 29.84;
     case "UYU":
       return 2.51;
+    case "HNL":
+      return 4.58;
     default:
       throw new Error("為替レートの処理中にエラーが発生しました:"+unit);
   }
