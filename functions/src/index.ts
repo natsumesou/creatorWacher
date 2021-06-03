@@ -19,6 +19,6 @@ const strongRuntimeOpts: RuntimeOptions = {
   memory: "256MB",
 };
 
-export const PublishCreatorsWatchFunction = functions.runWith(weakRuntimeOpts).region(REGION).pubsub.schedule("every 5 minutes").onRun(publishCreatorsWatch);
+export const PublishCreatorsWatchFunction = functions.runWith(weakRuntimeOpts).region(REGION).pubsub.schedule("every 30 minutes").onRun(publishCreatorsWatch);
 export const UpdateArchivesFunction = functions.runWith(weakRuntimeOpts).region(REGION).pubsub.topic(TOPIC).onPublish(updateArchives);
 export const AnalyzeChatsFunction = functions.runWith(strongRuntimeOpts).region(REGION).firestore.document("Stream/{videoId}").onCreate(analyzeChats);
