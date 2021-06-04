@@ -1,6 +1,6 @@
 import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
-import {findChatMessages, ChatUnavailableError, ChatNotFoundError} from "./lib/youtubeChatFinder";
+import {findChatMessages} from "./lib/youtubeChatFinder";
 import {Bot} from "./lib/discordNotify";
 import {QueryDocumentSnapshot} from "firebase-functions/lib/providers/firestore";
 import {EventContext} from "firebase-functions";
@@ -13,24 +13,25 @@ export const analyzeChats = async (snapshot: QueryDocumentSnapshot, context: Eve
   );
   try {
     const chats = await findChatMessages(snapshot.id, snapshot.get("streamLengthSec"));
-    await updateStream(snapshot.id, chats);
-    await bot.message(formatMessage(snapshot, chats));
-  } catch (err) {
-    if (err instanceof ChatUnavailableError) {
-      await updateStream(snapshot.id, {chatDisabled: true});
-      await bot.message(formatNonChatMessage(snapshot, true));
-    } else if (err instanceof ChatNotFoundError) {
+    if (chats.chatUnavailable) {
+      delete chats.chatNotFound;
+      await updateStream(snapshot.id, chats);
+      await bot.message(formatNonChatMessage(snapshot, chats));
+      return;
+    }
+    if (chats.chatNotFound) {
       const now = new Date();
       const publishedAt = snapshot.get("publishedAt").toDate();
+
       if (withinAday(now, publishedAt)) {
         // 公開されて1日以内の場合はチャットが戻ってくる可能性があるので一度削除する
         await deleteStream(snapshot);
-        
+
         // 配信後最初のクローリングのときだけメッセージを流す
         if (withinHalfAnHour(now, publishedAt)) {
           const message = "チャットがオフになっている(もしくはYouTubeの仕様が変わった)可能性が高いため１日監視します。頻発する場合は仕様の再確認をしてください。\n" + generateURL(snapshot.id);
           await Promise.all([
-            bot.message(formatNonChatMessage(snapshot, false)),
+            bot.message(formatNonChatMessage(snapshot, chats)),
             bot.activity(message),
           ]);
           functions.logger.warn(message);
@@ -39,12 +40,17 @@ export const analyzeChats = async (snapshot: QueryDocumentSnapshot, context: Eve
         const message = "チャットが戻らないまま1日経ったので監視を終了します\n" + generateURL(snapshot.id);
         await bot.activity(message);
       }
-    } else {
-      const message = err.message + "\n" + generateURL(snapshot.id);
-      await bot.alert(message);
-      await deleteStream(snapshot);
-      throw new Error(message);
+      return;
     }
+    delete chats.chatUnavailable;
+    delete chats.chatNotFound;
+    await updateStream(snapshot.id, chats);
+    await bot.message(formatMessage(snapshot, chats));
+  } catch (err) {
+    const message = err.message + "\n" + generateURL(snapshot.id);
+    await bot.alert(message);
+    await deleteStream(snapshot);
+    throw new Error(message);
   }
 };
 
@@ -77,7 +83,7 @@ const withinAday = (now: Date, publishedAt: Date) => {
 };
 
 const formatMessage = (snapshot: QueryDocumentSnapshot, chats: any) => {
-  return formatMessageBase(snapshot) +
+  return formatMessageBase(snapshot, chats) +
     "\nコメント数: " + threeDigit(chats.chatCount) +
     "\nスパチャ数: " + threeDigit(chats.superChatCount) +
     "\nスパチャ額: " + threeDigit(Math.round(chats.superChatAmount)) + "円" +
@@ -85,16 +91,20 @@ const formatMessage = (snapshot: QueryDocumentSnapshot, chats: any) => {
     "\n" + generateURL(snapshot.id);
 };
 
-const formatNonChatMessage = (snapshot: QueryDocumentSnapshot, chatDisabled: boolean) => {
-  const status = chatDisabled ? "[確定値]" : "[速報値]";
-  return formatMessageBase(snapshot) +
+const formatNonChatMessage = (snapshot: QueryDocumentSnapshot, chats: any) => {
+  const status = chats.chatDisabled ? "[確定値]" : "[速報値]";
+  return formatMessageBase(snapshot, chats) +
     "\nチャットがオフのため詳細データなし" + status +
     "\n" + generateURL(snapshot.id);
 };
 
-const formatMessageBase = (snapshot: QueryDocumentSnapshot) => {
-  return snapshot.get("title") +
-    "\n視聴数: " + threeDigit(snapshot.get("viewCount"));
+const formatMessageBase = (snapshot: QueryDocumentSnapshot, chats: any) => {
+  let message = snapshot.get("title");
+  if (chats.gameTitle) {
+    message += "\nゲームタイトル: " + chats.gameTitle;
+  }
+  message += "\n視聴数: " + threeDigit(snapshot.get("viewCount"));
+  return message;
 };
 
 const generateURL = (videoId: string) => {

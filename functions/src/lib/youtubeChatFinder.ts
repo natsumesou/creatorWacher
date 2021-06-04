@@ -4,18 +4,11 @@ const VIDEO_ENDPOINT = "https://www.youtube.com/watch";
 const CHAT_ENDPOINT = "https://www.youtube.com/youtubei/v1/live_chat/get_live_chat_replay";
 const PARALLEL_CNUMBER = 10;
 
-/**
- * チャットがオフになっているアーカイブ
- */
-export class ChatUnavailableError extends Error {}
-/**
- * 何かしらの理由でチャットが取得不能なアーカイブ
- */
-export class ChatNotFoundError extends Error {}
-
-
 export const findChatMessages = async (videoId: string, streamLengthSec: number) => {
   const chats = await fetchChatsParallel(videoId, streamLengthSec);
+  if (chats.chatUnavailable || chats.chatNotFound) {
+    return chats;
+  }
 
   const superchats = chats.superchats;
   const subscribes = chats.subscribes;
@@ -26,12 +19,12 @@ export const findChatMessages = async (videoId: string, streamLengthSec: number)
   }
 
   const result = {
+    gameTitle: chats.gameTitle,
     chatCount: chats.chatCount,
     superChatCount: Object.keys(superchats).length,
     superChatAmount: amount,
     subscribeCount: Object.keys(subscribes).length,
   };
-
   return result;
 };
 
@@ -45,25 +38,39 @@ const fetchChatsParallel = async (videoId: string, streamLengthSec: number) => {
 
   const result = await Promise.all(fetchVideoList) as Array<any>;
 
-  const obj = result.reduce((result, response) => {
+  const json = getInitialJSON(result[0].data);
+  const gameTitle = parseJSONtoFindGameTitle(json);
+
+  const obj = [];
+  let chatUnavailable = false;
+  let chatNotFound = false;
+  for (const response of result) {
     if (!chatAvailable(response.data)) {
-      throw new ChatUnavailableError("チャットがオフになっています: " + videoId);
+      chatUnavailable = true;
+      break;
     }
-    try {
-      result.push({
-        apiKey: findKey("INNERTUBE_API_KEY", response.data),
-        continuation: findContinuation("continuation", response.data),
-        visitor: findKey("visitorData", response.data),
-        client: findKey("clientVersion", response.data),
-      });
-      return result;
-    } catch (err) {
-      if (err instanceof ChatNotFoundError) {
-        throw new ChatNotFoundError(err.message + ": " + videoId);
-      }
-      throw new Error(err.message + ": " + videoId);
+    const apiKey = findKey("INNERTUBE_API_KEY", response.data);
+    const continuation = findContinuation("continuation", response.data);
+    const visitorData = findKey("visitorData", response.data);
+    const clientVersion = findKey("clientVersion", response.data);
+    if (!apiKey || !continuation || !visitorData || !clientVersion) {
+      chatNotFound = true;
+      break;
     }
-  }, []);
+    obj.push({
+      apiKey: apiKey,
+      continuation: continuation,
+      visitor: visitorData,
+      client: clientVersion,
+    });
+  }
+  if (chatUnavailable || chatNotFound) {
+    return {
+      gameTitle: gameTitle,
+      chatUnavailable: chatUnavailable,
+      chatNotFound: chatNotFound,
+    };
+  }
 
   const firstChatList = [];
   for (const data of obj) {
@@ -86,10 +93,31 @@ const fetchChatsParallel = async (videoId: string, streamLengthSec: number) => {
     total.subscribes = {...total.subscribes, ...chat.subscribes};
     return total;
   }, {
+    gameTitle: gameTitle,
     chatCount: 0,
     superchats: {},
     subscribes: {},
   });
+};
+
+const getInitialJSON = (html: string) => {
+  const match = html.match(/var ytInitialData = (.+);<\/script>/);
+  if (match === null) {
+    return null;
+  }
+  return JSON.parse(match[1]);
+};
+
+const parseJSONtoFindGameTitle = (json: any) => {
+  const contents = json.contents.twoColumnWatchNextResults.results.results.contents;
+  const streamMeta = contents.find((content:any) => {
+    return content.videoSecondaryInfoRenderer !== undefined;
+  });
+  if (streamMeta.videoSecondaryInfoRenderer.metadataRowContainer.metadataRowContainerRenderer.rows) {
+    return streamMeta.videoSecondaryInfoRenderer.metadataRowContainer.metadataRowContainerRenderer.rows[0].richMetadataRowRenderer.contents[0].richMetadataRenderer.title.simpleText;
+  } else {
+    return null;
+  }
 };
 
 const fetchFirstChat = async (data: any) => {
@@ -181,11 +209,7 @@ const chatAvailable = (source: string) => {
 };
 
 const findContinuation = (keyName: string, sourcee: string) => {
-  try {
-    return findVariable(keyName, sourcee, 100); // continuationが複数あり、小さい値の方は偽物なので弾く。
-  } catch (error) {
-    throw new ChatNotFoundError("チャットデータの取得でエラーが発生しました");
-  }
+  return findVariable(keyName, sourcee, 100); // continuationが複数あり、小さい値の方は偽物なので弾く。
 };
 
 const findKey = (keyName: string, source: string) => {
@@ -196,7 +220,7 @@ const findVariable = (keyName: string, source: string, minChar: number) => {
   const re = new RegExp("\"" + keyName + "\":\"([^\"]{"+minChar+",})\"");
   const match = re.exec(source);
   if (match === null) {
-    throw new ChatNotFoundError("動画ページ内の<" + keyName + ">が見つかりません。");
+    return null;
   }
   return match[1];
 };
