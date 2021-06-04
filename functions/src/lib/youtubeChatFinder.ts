@@ -1,7 +1,7 @@
 import axios from "axios";
 import {ExchangeRateManager} from "./exchangeRateManager";
 
-const VIDEO_ENDPOINT = "https://www.youtube.com/watch";
+export const VIDEO_ENDPOINT = "https://www.youtube.com/watch";
 const CHAT_ENDPOINT = "https://www.youtube.com/youtubei/v1/live_chat/get_live_chat_replay";
 const PARALLEL_CNUMBER = 10;
 

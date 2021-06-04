@@ -1,6 +1,6 @@
 import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
-import {findChatMessages} from "./lib/youtubeChatFinder";
+import {findChatMessages, VIDEO_ENDPOINT} from "./lib/youtubeChatFinder";
 import {Bot} from "./lib/discordNotify";
 import {QueryDocumentSnapshot} from "firebase-functions/lib/providers/firestore";
 import {EventContext} from "firebase-functions";
@@ -104,7 +104,7 @@ const formatMessageBase = (snapshot: QueryDocumentSnapshot) => {
 };
 
 const generateURL = (videoId: string) => {
-  return "https://www.youtube.com/watch?v=" + videoId;
+  return VIDEO_ENDPOINT + "?v=" + videoId;
 };
 
 const threeDigit = (num: number) => {
