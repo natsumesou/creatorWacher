@@ -6,7 +6,11 @@ import {QueryDocumentSnapshot} from "firebase-functions/lib/providers/firestore"
 import {EventContext} from "firebase-functions";
 
 export const analyzeChats = async (snapshot: QueryDocumentSnapshot, context: EventContext) => {
-  const bot = new Bot(functions.config().discord.general, functions.config().discord.system);
+  const bot = new Bot(
+      functions.config().discord.general,
+      functions.config().discord.system,
+      functions.config().discord.activity,
+  );
   try {
     const chats = await findChatMessages(snapshot.id, snapshot.get("streamLengthSec"));
     await updateStream(snapshot.id, chats);
@@ -24,12 +28,12 @@ export const analyzeChats = async (snapshot: QueryDocumentSnapshot, context: Eve
 
         if (withinOneHour(now, publishedAt)) {
           const message = "チャットがオフになっている(もしくはYouTubeの仕様が変わった)可能性が高いです\nhttps://www.youtube.com/watch?v=" + snapshot.id;
-          await bot.alert(message);
+          await bot.activity(message);
           functions.logger.warn(message);
         }
       } else {
         const message = "チャットが戻らないまま1日以上経ったので追跡を終了します\nhttps://www.youtube.com/watch?v=" + snapshot.id;
-        await bot.alert(message);
+        await bot.activity(message);
       }
     } else {
       await bot.alert(err.message);
