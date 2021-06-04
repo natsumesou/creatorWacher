@@ -83,7 +83,7 @@ const withinAday = (now: Date, publishedAt: Date) => {
 };
 
 const formatMessage = (snapshot: QueryDocumentSnapshot, chats: any) => {
-  return formatMessageBase(snapshot, chats) +
+  return formatMessageBase(snapshot) +
     "\nコメント数: " + threeDigit(chats.chatCount) +
     "\nスパチャ数: " + threeDigit(chats.superChatCount) +
     "\nスパチャ額: " + threeDigit(Math.round(chats.superChatAmount)) + "円" +
@@ -93,18 +93,14 @@ const formatMessage = (snapshot: QueryDocumentSnapshot, chats: any) => {
 
 const formatNonChatMessage = (snapshot: QueryDocumentSnapshot, chats: any) => {
   const status = chats.chatDisabled ? "[確定値]" : "[速報値]";
-  return formatMessageBase(snapshot, chats) +
+  return formatMessageBase(snapshot) +
     "\nチャットがオフのため詳細データなし" + status +
     "\n" + generateURL(snapshot.id);
 };
 
-const formatMessageBase = (snapshot: QueryDocumentSnapshot, chats: any) => {
-  let message = snapshot.get("title");
-  if (chats.gameTitle) {
-    message += "\nゲームタイトル: " + chats.gameTitle;
-  }
-  message += "\n視聴数: " + threeDigit(snapshot.get("viewCount"));
-  return message;
+const formatMessageBase = (snapshot: QueryDocumentSnapshot) => {
+  return snapshot.get("title") +
+  "\n視聴数: " + threeDigit(snapshot.get("viewCount"));
 };
 
 const generateURL = (videoId: string) => {
