@@ -13,10 +13,11 @@ export const analyzeChats = async (snapshot: QueryDocumentSnapshot, context: Eve
     await bot.message(formatMessage(snapshot, chats));
   } catch (err) {
     if (err instanceof ChatUnavailableError) {
+      await updateStream(snapshot.id, {chatDisabled: true});
       await bot.message(formatMessage(snapshot));
     } else if (err instanceof ChatNotFoundError) {
       const now = new Date();
-      const publishedAt = snapshot.get("publishedAt");
+      const publishedAt = snapshot.get("publishedAt").toDate();
       if (withinAday(now, publishedAt)) {
         // 公開されて1日以内の場合はチャットが戻ってくる可能性があるので一度削除する
         await deleteStream(now, snapshot);
@@ -37,9 +38,9 @@ export const analyzeChats = async (snapshot: QueryDocumentSnapshot, context: Eve
   }
 };
 
-const updateStream = async (videoId: string, chats: any) => {
+const updateStream = async (videoId: string, data: any) => {
   const db = admin.firestore();
-  await db.collection("Stream").doc(videoId).update(chats).catch((err) => {
+  await db.collection("Stream").doc(videoId).update(data).catch((err) => {
     functions.logger.error(err.message);
   });
 };
