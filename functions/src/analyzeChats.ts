@@ -24,10 +24,11 @@ export const analyzeChats = async (snapshot: QueryDocumentSnapshot, context: Eve
       const publishedAt = snapshot.get("publishedAt").toDate();
       if (withinAday(now, publishedAt)) {
         // 公開されて1日以内の場合はチャットが戻ってくる可能性があるので一度削除する
-        await deleteStream(now, snapshot);
-
-        if (withinOneHour(now, publishedAt)) {
-          const message = "チャットがオフになっている(もしくはYouTubeの仕様が変わった)可能性が高いため１日監視します。頻発する場合は仕様の再確認をしてください。\nhttps://www.youtube.com/watch?v=" + snapshot.id;
+        await deleteStream(snapshot);
+        
+        // 配信後最初のクローリングのときだけメッセージを流す
+        if (withinHalfAnHour(now, publishedAt)) {
+          const message = "チャットがオフになっている(もしくはYouTubeの仕様が変わった)可能性が高いため１日監視します。頻発する場合は仕様の再確認をしてください。\n" + generateURL(snapshot.id);
           await Promise.all([
             bot.message(formatNonChatMessage(snapshot, false)),
             bot.activity(message),
@@ -35,12 +36,14 @@ export const analyzeChats = async (snapshot: QueryDocumentSnapshot, context: Eve
           functions.logger.warn(message);
         }
       } else {
-        const message = "チャットが戻らないまま1日経ったので監視を終了します\nhttps://www.youtube.com/watch?v=" + snapshot.id;
+        const message = "チャットが戻らないまま1日経ったので監視を終了します\n" + generateURL(snapshot.id);
         await bot.activity(message);
       }
     } else {
-      await bot.alert(err.message);
-      throw err;
+      const message = err.message + "\n" + generateURL(snapshot.id);
+      await bot.alert(message);
+      await deleteStream(snapshot);
+      throw new Error(message);
     }
   }
 };
@@ -52,18 +55,18 @@ const updateStream = async (videoId: string, data: any) => {
   });
 };
 
-const deleteStream = async (now: Date, snapshot: QueryDocumentSnapshot) => {
+const deleteStream = async (snapshot: QueryDocumentSnapshot) => {
   const db = admin.firestore();
   await db.collection("Stream").doc(snapshot.id).delete().catch((err) => {
     functions.logger.error(err.message);
   });
 };
 
-const withinOneHour = (now: Date, publishedAt: Date) => {
+const withinHalfAnHour = (now: Date, publishedAt: Date) => {
   const millisecondsPerDay = 1000 * 60;
   const millisBetween = now.getTime() - publishedAt.getTime();
   const minutes = millisBetween / millisecondsPerDay;
-  return minutes < 60;
+  return minutes < 30;
 };
 
 const withinAday = (now: Date, publishedAt: Date) => {
