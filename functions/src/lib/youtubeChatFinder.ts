@@ -5,9 +5,14 @@ const CHAT_ENDPOINT = "https://www.youtube.com/youtubei/v1/live_chat/get_live_ch
 const PARALLEL_CNUMBER = 10;
 
 /**
- * チャットがサポートされていないアーカイブをクロールした場合に、パースエラー等と切り分けるために用意。
+ * チャットがオフになっているアーカイブ
  */
 export class ChatUnavailableError extends Error {}
+/**
+ * 何かしらの理由でチャットが取得不能なアーカイブ
+ */
+export class ChatNotFoundError extends Error {}
+
 
 export const findChatMessages = async (videoId: string, streamLengthSec: number) => {
   const chats = await fetchChatsParallel(videoId, streamLengthSec);
@@ -41,13 +46,23 @@ const fetchChatsParallel = async (videoId: string, streamLengthSec: number) => {
   const result = await Promise.all(fetchVideoList) as Array<any>;
 
   const obj = result.reduce((result, response) => {
-    result.push({
-      apiKey: findKey("INNERTUBE_API_KEY", response.data),
-      continuation: findContinuation("continuation", response.data),
-      visitor: findKey("visitorData", response.data),
-      client: findKey("clientVersion", response.data),
-    });
-    return result;
+    if (!chatAvailable(response.data)) {
+      throw new ChatUnavailableError("チャットがオフになっています: " + videoId);
+    }
+    try {
+      result.push({
+        apiKey: findKey("INNERTUBE_API_KEY", response.data),
+        continuation: findContinuation("continuation", response.data),
+        visitor: findKey("visitorData", response.data),
+        client: findKey("clientVersion", response.data),
+      });
+      return result;
+    } catch (err) {
+      if (err instanceof ChatNotFoundError) {
+        throw new ChatNotFoundError(err.message + ": " + videoId);
+      }
+      throw new Error(err.message + ": " + videoId);
+    }
   }, []);
 
   const firstChatList = [];
@@ -160,11 +175,16 @@ const fetchChatData = async (apiKey: string, continuation: string, visitor: stri
   return response;
 };
 
+const chatAvailable = (source: string) => {
+  const chatUnavailable = source.match(/この動画ではチャットのリプレイを利用できません/) !== null;
+  return !chatUnavailable;
+};
+
 const findContinuation = (keyName: string, sourcee: string) => {
   try {
     return findVariable(keyName, sourcee, 100); // continuationが複数あり、小さい値の方は偽物なので弾く。
   } catch (error) {
-    throw new ChatUnavailableError("チャットがオフになっています");
+    throw new ChatNotFoundError("チャットデータの取得でエラーが発生しました");
   }
 };
 
@@ -176,7 +196,7 @@ const findVariable = (keyName: string, source: string, minChar: number) => {
   const re = new RegExp("\"" + keyName + "\":\"([^\"]{"+minChar+",})\"");
   const match = re.exec(source);
   if (match === null) {
-    throw new Error("動画ページ内の<" + keyName + ">が見つかりません。");
+    throw new ChatNotFoundError("動画ページ内の<" + keyName + ">が見つかりません。");
   }
   return match[1];
 };
