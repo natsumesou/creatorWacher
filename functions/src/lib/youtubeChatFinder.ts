@@ -353,6 +353,8 @@ const rate = (unit: string) => {
       return 12.66;
     case "HRK":
       return 17.82;
+    case "DOP":
+      return 1.92;
     default:
       throw new Error("為替レートの処理中にエラーが発生しました:"+unit);
   }
