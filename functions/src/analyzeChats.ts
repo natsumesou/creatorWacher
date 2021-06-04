@@ -18,7 +18,7 @@ export const analyzeChats = async (snapshot: QueryDocumentSnapshot, context: Eve
   } catch (err) {
     if (err instanceof ChatUnavailableError) {
       await updateStream(snapshot.id, {chatDisabled: true});
-      await bot.message(formatMessage(snapshot));
+      await bot.message(formatNonChatMessage(snapshot, true));
     } else if (err instanceof ChatNotFoundError) {
       const now = new Date();
       const publishedAt = snapshot.get("publishedAt").toDate();
@@ -27,12 +27,15 @@ export const analyzeChats = async (snapshot: QueryDocumentSnapshot, context: Eve
         await deleteStream(now, snapshot);
 
         if (withinOneHour(now, publishedAt)) {
-          const message = "チャットがオフになっている(もしくはYouTubeの仕様が変わった)可能性が高いです\nhttps://www.youtube.com/watch?v=" + snapshot.id;
-          await bot.activity(message);
+          const message = "チャットがオフになっている(もしくはYouTubeの仕様が変わった)可能性が高いため１日監視します。頻発する場合は仕様の再確認をしてください。\nhttps://www.youtube.com/watch?v=" + snapshot.id;
+          await Promise.all([
+            bot.message(formatNonChatMessage(snapshot, false)),
+            bot.activity(message),
+          ]);
           functions.logger.warn(message);
         }
       } else {
-        const message = "チャットが戻らないまま1日以上経ったので追跡を終了します\nhttps://www.youtube.com/watch?v=" + snapshot.id;
+        const message = "チャットが戻らないまま1日経ったので監視を終了します\nhttps://www.youtube.com/watch?v=" + snapshot.id;
         await bot.activity(message);
       }
     } else {
@@ -70,19 +73,29 @@ const withinAday = (now: Date, publishedAt: Date) => {
   return days < 1;
 };
 
-const formatMessage = (snapshot: QueryDocumentSnapshot, chats?: any) => {
-  let message = snapshot.get("title") +
-    "\n視聴数: " + threeDigit(snapshot.get("viewCount"));
-  if (chats) {
-    message += "\nコメント数: " + threeDigit(chats.chatCount) +
+const formatMessage = (snapshot: QueryDocumentSnapshot, chats: any) => {
+  return formatMessageBase(snapshot) +
+    "\nコメント数: " + threeDigit(chats.chatCount) +
     "\nスパチャ数: " + threeDigit(chats.superChatCount) +
     "\nスパチャ額: " + threeDigit(Math.round(chats.superChatAmount)) + "円" +
-    "\nメンバー入会数: " + threeDigit(chats.subscribeCount);
-  } else {
-    message += "\nチャットがオフのため詳細データなし";
-  }
-  message += "\nhttps://www.youtube.com/watch?v=" + snapshot.id;
-  return message;
+    "\nメンバー入会数: " + threeDigit(chats.subscribeCount) +
+    "\n" + generateURL(snapshot.id);
+};
+
+const formatNonChatMessage = (snapshot: QueryDocumentSnapshot, chatDisabled: boolean) => {
+  return formatMessageBase(snapshot) +
+    "\nチャットがオフのため詳細データなし"+
+    chatDisabled ? "[確定値]\n" : "[速報値]\n" +
+    generateURL(snapshot.id);
+};
+
+const formatMessageBase = (snapshot: QueryDocumentSnapshot) => {
+  return snapshot.get("title") +
+    "\n視聴数: " + threeDigit(snapshot.get("viewCount"));
+};
+
+const generateURL = (videoId: string) => {
+  return "https://www.youtube.com/watch?v=" + videoId;
 };
 
 const threeDigit = (num: number) => {
