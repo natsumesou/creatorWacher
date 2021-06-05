@@ -5,9 +5,14 @@ export const VIDEO_ENDPOINT = "https://www.youtube.com/watch";
 const CHAT_ENDPOINT = "https://www.youtube.com/youtubei/v1/live_chat/get_live_chat_replay";
 const PARALLEL_CNUMBER = 10;
 
+/**
+ * チャットデータが取得できなかった場合のエラー
+ */
+export class ChatNotFoundError extends Error {}
+
 export const findChatMessages = async (videoId: string, streamLengthSec: number) => {
   const chats = await fetchChatsParallel(videoId, streamLengthSec);
-  if (chats.chatUnavailable || chats.chatNotFound) {
+  if (chats.chatUnavailable) {
     return chats;
   }
 
@@ -37,59 +42,45 @@ const fetchChatsParallel = async (videoId: string, streamLengthSec: number) => {
     const time = timeUnit * i + "s";
     fetchVideoList.push(fetchVideoPage(videoId, time));
   }
+  const responses = await Promise.all(fetchVideoList) as Array<any>;
 
-  const result = await Promise.all(fetchVideoList) as Array<any>;
-
-  const json = getInitialJSON(result[0].data);
+  const json = getInitialJSON(responses[0].data);
   const gameTitle = parseJSONtoFindGameTitle(json);
 
-  const obj = [];
-  let chatUnavailable = false;
-  let chatNotFound = false;
-  for (const response of result) {
-    if (!chatAvailable(response.data)) {
-      chatUnavailable = true;
-      break;
+  const params = [];
+  for (const response of responses) {
+    const param = getChatRequestParams(response.data);
+    if (param) {
+      params.push(param);
     }
-    const apiKey = findKey("INNERTUBE_API_KEY", response.data);
-    const continuation = findContinuation("continuation", response.data);
-    const visitorData = findKey("visitorData", response.data);
-    const clientVersion = findKey("clientVersion", response.data);
-    if (!apiKey || !continuation || !visitorData || !clientVersion) {
-      chatNotFound = true;
-      break;
-    }
-    obj.push({
-      apiKey: apiKey,
-      continuation: continuation,
-      visitor: visitorData,
-      client: clientVersion,
-    });
   }
-  if (chatUnavailable || chatNotFound) {
+  if (params.length !== responses.length) {
     return {
       gameTitle: gameTitle,
-      chatUnavailable: chatUnavailable,
-      chatNotFound: chatNotFound,
+      chatUnavailable: true,
     };
   }
 
   const firstChatList = [];
-  for (const data of obj) {
-    firstChatList.push(fetchFirstChat(data));
+  for (const data of params) {
+    firstChatList.push(fetchChat(data, []));
   }
-  const chatIds = await Promise.all(firstChatList);
+  const firstChatBlock = await Promise.all(firstChatList);
+  const chatIds = firstChatBlock.map((chats) => chats.firstChatId);
 
   const fetchChatList = [];
-  for (const [i, data] of obj.entries()) {
-    const filterdIds = chatIds.filter((id, j) => i !== j); // 自分自身のIDをリストから削除
-    const pickedIds = filterdIds.filter((id) => id !== chatIds[i]); // 自分自身のIDが他のIDと重複していた場合、残ったIDも消す。
-    const uniqIds = [...new Set(pickedIds)]; // 最終的に残った中で重複IDがある場合はユニークにする
+  for (const [i, data] of params.entries()) {
+    const continuation = firstChatBlock[i].nextContinuation;
+    if (continuation === null) {
+      continue;
+    }
+    data.continuation = continuation;
+    const uniqIds = [...new Set(chatIds)]; // 重複IDがある場合はユニークにする
     fetchChatList.push(fetchChats(data, uniqIds));
   }
   const chats = await Promise.all(fetchChatList);
 
-  return chats.reduce((total: any, chat: any) => {
+  const result = chats.concat(firstChatBlock).reduce((total: any, chat: any) => {
     total.chatCount += chat.chatCount;
     total.superchats = {...total.superchats, ...chat.superchats};
     total.subscribes = {...total.subscribes, ...chat.subscribes};
@@ -100,6 +91,33 @@ const fetchChatsParallel = async (videoId: string, streamLengthSec: number) => {
     superchats: {},
     subscribes: {},
   });
+
+  return result;
+};
+
+const getChatRequestParams = (html: string) => {
+  if (!chatAvailable(html)) {
+    return null;
+  }
+  const apiKey = findKey("INNERTUBE_API_KEY", html);
+  const continuation = findContinuation("continuation", html);
+  const visitorData = findKey("visitorData", html);
+  const clientVersion = findKey("clientVersion", html);
+  if (!apiKey || !continuation || !visitorData || !clientVersion) {
+    throw new ChatNotFoundError(`
+      チャットが取得できません(
+      apiKey: ${apiKey},
+      continuation: ${continuation},
+      visitorData: ${visitorData},
+      clientVersion: ${clientVersion}
+    )`);
+  }
+  return {
+    apiKey: apiKey,
+    continuation: continuation,
+    visitor: visitorData,
+    client: clientVersion,
+  };
 };
 
 const getInitialJSON = (html: string) => {
@@ -122,40 +140,19 @@ const parseJSONtoFindGameTitle = (json: any) => {
   }
 };
 
-const fetchFirstChat = async (data: any) => {
-  const chatdataResponse = await fetchChatData(data.apiKey, data.continuation, data.visitor, data.client);
-  const chatActions = chatdataResponse.data.continuationContents.liveChatContinuation.actions;
-  if (chatActions && chatActions.length > 0) {
-    const chats = processChats(chatActions, []);
-    return chats.firstChatId;
-  }
-  return null;
-};
-
 const fetchChats = async (data: any, chatIds: Array<string|null>) => {
   let chatCount = 0;
   let superchats:any = {};
   let subscribes:any = {};
 
-  let nextContinuation = data.continuation;
   for (;;) {
-    const chatdataResponse = await fetchChatData(data.apiKey, nextContinuation, data.visitor, data.client);
-    const chatActions = chatdataResponse.data.continuationContents.liveChatContinuation.actions;
+    const chats = await fetchChat(data, chatIds);
+    chatCount += chats.chatCount;
+    superchats = {...superchats, ...chats.superchats};
+    subscribes = {...subscribes, ...chats.subscribes};
 
-    if (chatActions && chatActions.length > 0) {
-      const result = processChats(chatActions, chatIds);
-      chatCount += result.chatCount;
-      superchats = {...superchats, ...result.superchats};
-      subscribes = {...subscribes, ...result.subscribes};
-      if (result.end) {
-        break;
-      }
-    }
-    const nextCont = chatdataResponse.data.continuationContents.liveChatContinuation.continuations.find((cont: any) => {
-      return cont.liveChatReplayContinuationData !== undefined;
-    });
-    if (nextCont) {
-      nextContinuation = nextCont.liveChatReplayContinuationData.continuation;
+    if (chats.nextContinuation) {
+      data.continuation = chats.nextContinuation;
     } else {
       break;
     }
@@ -166,6 +163,42 @@ const fetchChats = async (data: any, chatIds: Array<string|null>) => {
     superchats: superchats,
     subscribes: subscribes,
   };
+};
+
+const fetchChat = async (data: any, chatIds: Array<string|null>) => {
+  const chatdataResponse = await fetchChatData(data.apiKey, data.continuation, data.visitor, data.client);
+  const chatActions = chatdataResponse.data.continuationContents.liveChatContinuation.actions;
+
+  const chats: {
+    chatCount: number,
+    superchats: any,
+    subscribes: any,
+    firstChatId: string|null,
+    nextContinuation: string|null,
+  } = {
+    chatCount: 0,
+    superchats: {},
+    subscribes: {},
+    firstChatId: null,
+    nextContinuation: null,
+  };
+
+  if (chatActions === undefined || chatActions.length === 0) {
+    return chats;
+  }
+  const result = processChats(chatActions, chatIds);
+  const nextCont = chatdataResponse.data.continuationContents.liveChatContinuation.continuations.find((cont: any) => {
+    return cont.liveChatReplayContinuationData !== undefined;
+  });
+  chats.chatCount = result.chatCount;
+  chats.superchats = result.superchats;
+  chats.subscribes = result.subscribes;
+  chats.firstChatId = result.firstChatId;
+  // 次のチャットを読み込んでも良い場合のみnextContinuationを代入する
+  if (nextCont && !result.end) {
+    chats.nextContinuation = nextCont.liveChatReplayContinuationData.continuation;
+  }
+  return chats;
 };
 
 const fetchVideoPage = async (videoId: string, time: string) => {
@@ -242,6 +275,7 @@ const processChats = (chats: Array<any>, chatIds: Array<string|null>) => {
       }
       if (action.addChatItemAction?.item?.liveChatTextMessageRenderer) {
         const chatId = action.addChatItemAction.item.liveChatTextMessageRenderer.id;
+        // 重複が見つかった時点で集計処理を止める
         if (chatIds.includes(chatId)) {
           return true;
         }

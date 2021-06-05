@@ -1,6 +1,6 @@
 import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
-import {findChatMessages, VIDEO_ENDPOINT} from "./lib/youtubeChatFinder";
+import {ChatNotFoundError, findChatMessages, VIDEO_ENDPOINT} from "./lib/youtubeChatFinder";
 import {Bot} from "./lib/discordNotify";
 import {QueryDocumentSnapshot} from "firebase-functions/lib/providers/firestore";
 import {EventContext} from "firebase-functions";
@@ -14,43 +14,21 @@ export const analyzeChats = async (snapshot: QueryDocumentSnapshot, context: Eve
   try {
     const chats = await findChatMessages(snapshot.id, snapshot.get("streamLengthSec"));
     if (chats.chatUnavailable) {
-      delete chats.chatNotFound;
       await updateStream(snapshot.id, chats);
       await bot.message(formatNonChatMessage(snapshot, chats));
       return;
     }
-    if (chats.chatNotFound) {
-      const now = new Date();
-      const publishedAt = snapshot.get("publishedAt").toDate();
-
-      if (withinAday(now, publishedAt)) {
-        // 公開されて1日以内の場合はチャットが戻ってくる可能性があるので一度削除する
-        await deleteStream(snapshot);
-
-        // 配信後最初のクローリングのときだけメッセージを流す
-        if (withinHalfAnHour(now, publishedAt)) {
-          const message = "チャットがオフになっている(もしくはYouTubeの仕様が変わった)可能性が高いため１日監視します。頻発する場合は仕様の再確認をしてください。\n" + generateURL(snapshot.id);
-          await Promise.all([
-            bot.message(formatNonChatMessage(snapshot, chats)),
-            bot.activity(message),
-          ]);
-          functions.logger.warn(message);
-        }
-      } else {
-        const message = "チャットが戻らないまま1日経ったので監視を終了します\n" + generateURL(snapshot.id);
-        await bot.activity(message);
-      }
-      return;
-    }
-    delete chats.chatUnavailable;
-    delete chats.chatNotFound;
     await updateStream(snapshot.id, chats);
     await bot.message(formatMessage(snapshot, chats));
   } catch (err) {
-    const message = err.message + "\n" + generateURL(snapshot.id);
-    await bot.alert(message);
-    await deleteStream(snapshot);
-    throw new Error(message);
+    if (err instanceof ChatNotFoundError) {
+      await processChatNotFound(bot, snapshot);
+    } else {
+      const message = err.message + "\n" + generateURL(snapshot.id);
+      await bot.alert(message);
+      await deleteStream(snapshot);
+      throw new Error(message);
+    }
   }
 };
 
@@ -68,18 +46,43 @@ const deleteStream = async (snapshot: QueryDocumentSnapshot) => {
   });
 };
 
-const withinHalfAnHour = (now: Date, publishedAt: Date) => {
-  const millisecondsPerDay = 1000 * 60;
-  const millisBetween = now.getTime() - publishedAt.getTime();
-  const minutes = millisBetween / millisecondsPerDay;
-  return minutes < 30;
+const processChatNotFound = async (bot: Bot, snapshot: QueryDocumentSnapshot) => {
+  const now = new Date();
+  const publishedAt = snapshot.get("publishedAt").toDate();
+
+  if (passedDays(now, publishedAt) < 1) {
+    // 公開されて1日以内の場合はチャットが戻ってくる可能性があるので一度削除する
+    await deleteStream(snapshot);
+
+    // 配信後2回目のクローリングのときだけメッセージを流す
+    // 初回のクローリング時点ではチャットが取得できないことが多いのでスルー
+    if (passedHours(now, publishedAt) > 0.5 && passedHours(now, publishedAt) < 1) {
+      const message = "チャットがオフになっている(もしくはYouTubeの仕様が変わった)可能性が高いため１日監視します。頻発する場合は仕様の再確認をしてください。\n" + generateURL(snapshot.id);
+      await Promise.all([
+        bot.message(formatNonChatMessage(snapshot)),
+        bot.activity(message),
+      ]);
+      functions.logger.warn(message);
+    }
+  } else {
+    const message = "チャットが戻らないまま1日経ったので監視を終了します\n" + generateURL(snapshot.id);
+    await bot.activity(message);
+  }
 };
 
-const withinAday = (now: Date, publishedAt: Date) => {
+const passedHours = (now: Date, publishedAt: Date) => {
+  const millisecondsPerHour = 1000 * 60 * 60;
+  return getDateDiff(now, publishedAt, millisecondsPerHour);
+};
+
+const passedDays = (now: Date, publishedAt: Date) => {
   const millisecondsPerDay = 1000 * 60 * 60 * 24;
-  const millisBetween = now.getTime() - publishedAt.getTime();
-  const days = millisBetween / millisecondsPerDay;
-  return days < 1;
+  return getDateDiff(now, publishedAt, millisecondsPerDay);
+};
+
+const getDateDiff = (now: Date, old: Date, unitMillisec: number) => {
+  const millisBetween = now.getTime() - old.getTime();
+  return Math.abs(millisBetween / unitMillisec);
 };
 
 const formatMessage = (snapshot: QueryDocumentSnapshot, chats: any) => {
@@ -91,8 +94,8 @@ const formatMessage = (snapshot: QueryDocumentSnapshot, chats: any) => {
     "\n" + generateURL(snapshot.id);
 };
 
-const formatNonChatMessage = (snapshot: QueryDocumentSnapshot, chats: any) => {
-  const status = chats.chatDisabled ? "[確定値]" : "[速報値]";
+const formatNonChatMessage = (snapshot: QueryDocumentSnapshot, chats?: any) => {
+  const status = chats?.chatDisabled ? "[確定値]" : "[速報値]";
   return formatMessageBase(snapshot) +
     "\nチャットがオフのため詳細データなし" + status +
     "\n" + generateURL(snapshot.id);
