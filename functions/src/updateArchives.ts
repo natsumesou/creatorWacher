@@ -38,7 +38,14 @@ const saveStream = async (channel: any, streams: Array<any>) => {
       continue;
     }
     delete stream.id;
-    await streamRef.set(stream).catch((err) => {
+    await streamRef.set({...stream,
+      chatUnavailable: false,
+      gameTitle: null,
+      chatCount: 0,
+      superChatCount: 0,
+      superChatAmount: 0,
+      subscribeCount: 0,
+    }).catch((err) => {
       functions.logger.error(err.message);
     });
   }

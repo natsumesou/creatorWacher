@@ -13,7 +13,14 @@ export class ChatNotFoundError extends Error {}
 export const findChatMessages = async (videoId: string, streamLengthSec: number) => {
   const chats = await fetchChatsParallel(videoId, streamLengthSec);
   if (chats.chatUnavailable) {
-    return chats;
+    return {
+      chatUnavailable: chats.chatUnavailable,
+      gameTitle: chats.gameTitle,
+      chatCount: 0,
+      superChatCount: 0,
+      superChatAmount: 0,
+      subscribeCount: 0,
+    };
   }
 
   const superchats = chats.superchats;
@@ -26,6 +33,7 @@ export const findChatMessages = async (videoId: string, streamLengthSec: number)
   }
 
   const result = {
+    chatUnavailable: false,
     gameTitle: chats.gameTitle,
     chatCount: chats.chatCount,
     superChatCount: Object.keys(superchats).length,
