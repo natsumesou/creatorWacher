@@ -12,7 +12,7 @@ export const analyzeChats = async (snapshot: QueryDocumentSnapshot, context: Eve
   );
   try {
     const chats = await findChatMessages(snapshot.id, snapshot.get("streamLengthSec"));
-    if (chats.chatUnavailable) {
+    if (!chats.chatAvailable) {
       await updateStream(snapshot, chats);
       await bot.message(formatNonChatMessage(snapshot, chats));
       return;

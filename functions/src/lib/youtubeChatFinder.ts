@@ -14,7 +14,7 @@ export const findChatMessages = async (videoId: string, streamLengthSec: number)
   const chats = await fetchChatsParallel(videoId, streamLengthSec);
   if (chats.chatUnavailable) {
     return {
-      chatUnavailable: chats.chatUnavailable,
+      chatAvailable: !chats.chatUnavailable,
       gameTitle: chats.gameTitle,
       chatCount: 0,
       superChatCount: 0,
@@ -33,7 +33,7 @@ export const findChatMessages = async (videoId: string, streamLengthSec: number)
   }
 
   const result = {
-    chatUnavailable: false,
+    chatAvailable: true,
     gameTitle: chats.gameTitle,
     chatCount: chats.chatCount,
     superChatCount: Object.keys(superchats).length,
