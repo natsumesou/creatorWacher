@@ -92,7 +92,7 @@ const formatMessage = (snapshot: QueryDocumentSnapshot, chats: any) => {
 };
 
 const formatNonChatMessage = (snapshot: QueryDocumentSnapshot, chats?: any) => {
-  const status = chats?.chatDisabled ? "[確定値]" : "[速報値]";
+  const status = chats?.chatUnavailable ? "[確定値]" : "[速報値]";
   return formatMessageBase(snapshot) +
     "\nチャットがオフのため詳細データなし" + status +
     "\n" + generateURL(snapshot.id);
