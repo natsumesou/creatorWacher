@@ -1,12 +1,24 @@
 import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
 import {Message} from "firebase-functions/lib/providers/pubsub";
-import {findArchivedStreams} from "./lib/youtubeArchiveFinder";
+import {findArchivedStreams, CHANNEL_ENDPOINT} from "./lib/youtubeArchiveFinder";
+import {Bot} from "./lib/discordNotify";
 
 export const updateArchives = async (message: Message) => {
+  const bot = new Bot(
+      functions.config().discord.general,
+      functions.config().discord.system,
+      functions.config().discord.activity,
+  );
   const channel = messageToJSON(message);
-  const streams = await findArchivedStreams(channel.id);
-  await saveStream(channel, streams);
+  try {
+    const streams = await findArchivedStreams(channel.id);
+    await saveStream(channel, streams);
+  } catch (err) {
+    const message = err.message + "\n<" + CHANNEL_ENDPOINT + channel.id + ">";
+    await bot.alert(message);
+    throw new Error(message);
+  }
 };
 
 const messageToJSON = (message: Message) => {
@@ -17,8 +29,8 @@ const messageToJSON = (message: Message) => {
 const saveStream = async (channel: any, streams: Array<any>) => {
   const db = admin.firestore();
   for (const stream of streams) {
-    const docRef = db.collection("Stream").doc(stream.id);
-    const doc = await docRef.get().catch((err) => {
+    const streamRef = db.collection(`channels/${channel.id}/streams`).doc(stream.id);
+    const doc = await streamRef.get().catch((err) => {
       functions.logger.error(err.message);
     });
 
@@ -26,10 +38,7 @@ const saveStream = async (channel: any, streams: Array<any>) => {
       continue;
     }
     delete stream.id;
-    const result = Object.assign(stream, {
-      channelId: channel.id,
-    });
-    await docRef.set(result).catch((err) => {
+    await streamRef.set(stream).catch((err) => {
       functions.logger.error(err.message);
     });
   }

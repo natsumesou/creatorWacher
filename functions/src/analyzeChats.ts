@@ -1,5 +1,4 @@
 import * as functions from "firebase-functions";
-import * as admin from "firebase-admin";
 import {ChatNotFoundError, findChatMessages, VIDEO_ENDPOINT} from "./lib/youtubeChatFinder";
 import {Bot} from "./lib/discordNotify";
 import {QueryDocumentSnapshot} from "firebase-functions/lib/providers/firestore";
@@ -14,17 +13,17 @@ export const analyzeChats = async (snapshot: QueryDocumentSnapshot, context: Eve
   try {
     const chats = await findChatMessages(snapshot.id, snapshot.get("streamLengthSec"));
     if (chats.chatUnavailable) {
-      await updateStream(snapshot.id, chats);
+      await updateStream(snapshot, chats);
       await bot.message(formatNonChatMessage(snapshot, chats));
       return;
     }
-    await updateStream(snapshot.id, chats);
+    await updateStream(snapshot, chats);
     await bot.message(formatMessage(snapshot, chats));
   } catch (err) {
     if (err instanceof ChatNotFoundError) {
       await processChatNotFound(bot, snapshot);
     } else {
-      const message = err.message + "\n" + generateURL(snapshot.id);
+      const message = err.message + "\n<" + generateURL(snapshot.id)+">";
       await bot.alert(message);
       await deleteStream(snapshot);
       throw new Error(message);
@@ -32,16 +31,14 @@ export const analyzeChats = async (snapshot: QueryDocumentSnapshot, context: Eve
   }
 };
 
-const updateStream = async (videoId: string, data: any) => {
-  const db = admin.firestore();
-  await db.collection("Stream").doc(videoId).update(data).catch((err) => {
+const updateStream = async (snapshot: QueryDocumentSnapshot, data: any) => {
+  await snapshot.ref.update(data).catch((err) => {
     functions.logger.error(err.message);
   });
 };
 
 const deleteStream = async (snapshot: QueryDocumentSnapshot) => {
-  const db = admin.firestore();
-  await db.collection("Stream").doc(snapshot.id).delete().catch((err) => {
+  await snapshot.ref.delete().catch((err) => {
     functions.logger.error(err.message);
   });
 };

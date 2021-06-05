@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const CHANNEL_ENDPOINT = "https://www.youtube.com/channel/";
+export const CHANNEL_ENDPOINT = "https://www.youtube.com/channel/";
 
 export const findArchivedStreams = async (channelId: string) => {
   const response = await fetchVideoArchive(channelId);

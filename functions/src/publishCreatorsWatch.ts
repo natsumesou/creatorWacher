@@ -4,7 +4,7 @@ import {TOPIC} from "./index";
 
 export const publishCreatorsWatch = async () => {
   const db = admin.firestore();
-  const channelRef = db.collection("Channel");
+  const channelRef = db.collection("channels");
   const channels = await channelRef.get();
 
   const pubsub = new PubSub({projectId: process.env.GCP_PROJECT});
