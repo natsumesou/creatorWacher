@@ -9,7 +9,6 @@
     "target": "es2017",
     "lib": [
       "es2019",
-      "ESNext.String",
     ]
   },
   "compileOnSave": true,

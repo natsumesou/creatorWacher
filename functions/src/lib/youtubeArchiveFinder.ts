@@ -92,7 +92,8 @@ const stringToDatetime = (relative: string, now: Date) => {
 };
 
 const stringToNum = (str: string) => {
-  return parseInt(str.replaceAll(",", ""));
+  const re = new RegExp(/,/, "g");
+  return parseInt(str.replace(re, ""));
 };
 
 const stringToTimelength = (str: string) => {
