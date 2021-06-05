@@ -133,7 +133,11 @@ const parseJSONtoFindGameTitle = (json: any) => {
   const streamMeta = contents.find((content:any) => {
     return content.videoSecondaryInfoRenderer !== undefined;
   });
-  if (streamMeta.videoSecondaryInfoRenderer.metadataRowContainer.metadataRowContainerRenderer.rows) {
+  // 動画の音楽情報が登録されている場合に当てはまってしまう
+  // 動画とゲーム両方登録されていた場合の挙動は未検証
+  if (streamMeta.videoSecondaryInfoRenderer.metadataRowContainer.metadataRowContainerRenderer.rows &&
+    streamMeta.videoSecondaryInfoRenderer.metadataRowContainer.metadataRowContainerRenderer.rows[0].richMetadataRowRenderer
+  ) {
     return streamMeta.videoSecondaryInfoRenderer.metadataRowContainer.metadataRowContainerRenderer.rows[0].richMetadataRowRenderer.contents[0].richMetadataRenderer.title.simpleText;
   } else {
     return null;
