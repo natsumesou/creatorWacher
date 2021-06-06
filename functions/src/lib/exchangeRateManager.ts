@@ -107,6 +107,8 @@ export class ExchangeRateManager {
         return 17.82;
       case "DOP":
         return 1.92;
+      case "PYG":
+        return 0.016;
       default:
         throw new Error("為替レートの処理中にエラーが発生しました: " + currencyCode);
     }
