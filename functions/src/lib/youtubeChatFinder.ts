@@ -57,7 +57,7 @@ const fetchChatsParallel = async (videoId: string, streamLengthSec: number) => {
 
   const params = [];
   for (const response of responses) {
-    const param = getChatRequestParams(response.data);
+    const param = getChatRequestParams(response.data, getInitialJSON(response.data));
     if (param) {
       params.push(param);
     }
@@ -103,27 +103,24 @@ const fetchChatsParallel = async (videoId: string, streamLengthSec: number) => {
   return result;
 };
 
-const getChatRequestParams = (html: string) => {
+const getChatRequestParams = (html: string, json: any) => {
   if (!chatAvailable(html)) {
     return null;
   }
   const apiKey = findKey("INNERTUBE_API_KEY", html);
-  const continuation = findContinuation("continuation", html);
-  const visitorData = findKey("visitorData", html);
+  const continuation = findContinuation(json);
   const clientVersion = findKey("clientVersion", html);
-  if (!apiKey || !continuation || !visitorData || !clientVersion) {
+  if (!apiKey || !continuation || !clientVersion) {
     throw new ChatNotFoundError(`
       チャットが取得できません(
       apiKey: ${apiKey},
       continuation: ${continuation},
-      visitorData: ${visitorData},
       clientVersion: ${clientVersion}
     )`);
   }
   return {
     apiKey: apiKey,
     continuation: continuation,
-    visitor: visitorData,
     client: clientVersion,
   };
 };
@@ -178,7 +175,7 @@ const fetchChats = async (data: any, chatIds: Array<string|null>) => {
 };
 
 const fetchChat = async (data: any, chatIds: Array<string|null>) => {
-  const chatdataResponse = await fetchChatData(data.apiKey, data.continuation, data.visitor, data.client);
+  const chatdataResponse = await fetchChatData(data.apiKey, data.continuation, data.client);
   const chatActions = chatdataResponse.data.continuationContents.liveChatContinuation.actions;
 
   const chats: {
@@ -227,14 +224,13 @@ const fetchVideoPage = async (videoId: string, time: string) => {
   });
 };
 
-const fetchChatData = async (apiKey: string, continuation: string, visitor: string, client: string) => {
+const fetchChatData = async (apiKey: string, continuation: string, client: string) => {
   const userAgent = "Mozilla/5.0 (Windows NT 6.3; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.111 Safari/537.36";
   const data = {
     context: {
       client: {
         clientName: "WEB",
         clientVersion: client,
-        visitorData: visitor,
         userAgent,
       },
     },
@@ -255,8 +251,8 @@ const chatAvailable = (source: string) => {
   return !chatUnavailable;
 };
 
-const findContinuation = (keyName: string, sourcee: string) => {
-  return findVariable(keyName, sourcee, 100); // continuationが複数あり、小さい値の方は偽物なので弾く。
+const findContinuation = (json: any) => {
+  return json.contents.twoColumnWatchNextResults.conversationBar.liveChatRenderer.continuations[0].reloadContinuationData.continuation;
 };
 
 const findKey = (keyName: string, source: string) => {
