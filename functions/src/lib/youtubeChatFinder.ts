@@ -252,6 +252,9 @@ const chatAvailable = (source: string) => {
 };
 
 const findContinuation = (json: any) => {
+  if (!json.contents.twoColumnWatchNextResults.conversationBar) {
+    return null;
+  }
   return json.contents.twoColumnWatchNextResults.conversationBar.liveChatRenderer.continuations[0].reloadContinuationData.continuation;
 };
 
