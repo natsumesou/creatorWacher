@@ -1,0 +1,3 @@
+steps:
+- name: gcr.io/discord-315419/firebase
+  args: ['deploy', '--project=discord-315419']
