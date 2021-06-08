@@ -5,7 +5,12 @@ export const CHANNEL_ENDPOINT = "https://www.youtube.com/channel/";
 export const findArchivedStreams = async (channelId: string) => {
   const response = await fetchVideoArchive(channelId);
   const initData = getInitialJSON(response.data);
-  const result = parseJSONtoFindStreams(initData);
+  const streams = parseJSONtoFindStreams(initData);
+  const subscribeCount = parseJSONtoFindSubscribers(initData);
+  const result = {
+    subscribeCount: subscribeCount,
+    streams: streams,
+  };
   return result;
 };
 
@@ -30,6 +35,11 @@ const getInitialJSON = (html: string) => {
     return null;
   }
   return JSON.parse(match[1]);
+};
+
+const parseJSONtoFindSubscribers = (json: any) => {
+  const subscriberStr = json.header.c4TabbedHeaderRenderer.subscriberCountText.simpleText.replace(/チャンネル登録者数\s/, "").replace(/人/, "");
+  return kanjiToNum(subscriberStr);
 };
 
 const parseJSONtoFindStreams = (json: any) => {
@@ -131,5 +141,27 @@ const stringToSecond = (num: number, unit: string) => {
       return num * 60 * 60 * 24 * 365;
     default:
       throw new Error("配信終了日時の変換で想定外の単位が出現しました:" + unit);
+  }
+};
+
+const kanjiToNum = (str: string) => {
+  const match = str.match(/([\d.]+)(.+)?/);
+  if (match === null) {
+    throw new Error("チャンネル登録者数の処理中にエラーが発生しました:" + str);
+  }
+  const num = parseFloat(match[1]);
+  return kanjiToNumUnit(num, match[2]);
+};
+
+const kanjiToNumUnit = (num: number, unit: string) => {
+  switch (unit) {
+    case "万":
+      return num * 10000;
+    case "億":
+      return num * 100000000;
+    case undefined:
+      return num;
+    default:
+      throw new Error("登録者数の変換で想定外の単位が出現しました:" + unit);
   }
 };

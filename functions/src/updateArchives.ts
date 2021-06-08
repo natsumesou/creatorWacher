@@ -12,8 +12,12 @@ export const updateArchives = async (message: Message) => {
       functions.config().discord.activity,
   );
   try {
-    const streams = await findArchivedStreams(channel.id);
-    await saveStream(channel, streams);
+    const now = new Date();
+    const result = await findArchivedStreams(channel.id);
+    await saveStream(channel, result.streams);
+    if (firstTimeToday(now)) {
+      await updateChannel(channel, result.subscribeCount);
+    }
   } catch (err) {
     const message = err.message + "\n<" + CHANNEL_ENDPOINT + channel.id + ">\n" + err.stack;
     await bot.alert(message);
@@ -24,6 +28,16 @@ export const updateArchives = async (message: Message) => {
 const messageToJSON = (message: Message) => {
   const jsonstr = Buffer.from(message.data, "base64").toString("utf-8");
   return JSON.parse(jsonstr);
+};
+
+const updateChannel = async (channel: any, subscribeCount: number) => {
+  const db = admin.firestore();
+  const channelRef = db.collection("channels").doc(channel.id);
+  channelRef.update({
+    subscribeCount: subscribeCount,
+  }).catch((err) => {
+    functions.logger.error(err.message);
+  });
 };
 
 const saveStream = async (channel: any, streams: Array<any>) => {
@@ -49,4 +63,8 @@ const saveStream = async (channel: any, streams: Array<any>) => {
       functions.logger.error(err.message);
     });
   }
+};
+
+const firstTimeToday = (now: Date) => {
+  return now.getHours() == 0 && (now.getMinutes() >= 0 && now.getMinutes() < 30);
 };
