@@ -33,7 +33,7 @@ const messageToJSON = (message: Message) => {
 const updateChannel = async (channel: any, subscribeCount: number) => {
   const db = admin.firestore();
   const channelRef = db.collection("channels").doc(channel.id);
-  channelRef.update({
+  await channelRef.update({
     subscribeCount: subscribeCount,
   }).catch((err) => {
     functions.logger.error(err.message);
