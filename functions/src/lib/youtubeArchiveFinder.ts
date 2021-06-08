@@ -5,7 +5,8 @@ export const CHANNEL_ENDPOINT = "https://www.youtube.com/channel/";
 export const findArchivedStreams = async (channelId: string) => {
   const response = await fetchVideoArchive(channelId);
   const initData = getInitialJSON(response.data);
-  return parseJSONtoFindStreams(initData);
+  const result = parseJSONtoFindStreams(initData);
+  return result;
 };
 
 const fetchVideoArchive = async (channelId: string) => {
@@ -32,6 +33,9 @@ const getInitialJSON = (html: string) => {
 };
 
 const parseJSONtoFindStreams = (json: any) => {
+  if (!json.contents.twoColumnBrowseResultsRenderer) {
+    throw new Error("why ytInitialData is empty?\n" + JSON.stringify(json));
+  }
   const videos = json.contents.twoColumnBrowseResultsRenderer.tabs[1].tabRenderer.content.sectionListRenderer.contents[0];
   if (videos.itemSectionRenderer.contents[0].gridRenderer === undefined) {
     // 動画が1つもない場合(音楽系チャンネルだとたまに検索でヒットするけど動画ページが空の場合がある)
