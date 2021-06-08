@@ -52,7 +52,7 @@ const saveStream = async (channel: any, streams: Array<any>) => {
       continue;
     }
     delete stream.id;
-    await streamRef.set({...stream,
+    await streamRef.create({...stream,
       chatAvailable: true,
       gameTitle: null,
       chatCount: 0,
