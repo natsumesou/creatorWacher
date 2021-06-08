@@ -14,7 +14,9 @@
 
 ```
 git clone <this_repo_url>
+cd <this_repo_url>
 npm install
+cd functions install
 ```
 
 ## How to Deploy
