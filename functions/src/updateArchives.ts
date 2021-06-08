@@ -67,5 +67,5 @@ const saveStream = async (channel: any, streams: Array<any>) => {
 
 const firstTimeToday = (now: Date) => {
   // hourはUTCを考慮して0ではなく15にしてる
-  return now.getHours() === 16 && (now.getMinutes() >= 0 && now.getMinutes() < 30);
+  return now.getHours() === 15 && (now.getMinutes() >= 0 && now.getMinutes() < 30);
 };
