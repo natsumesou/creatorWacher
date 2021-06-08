@@ -15,7 +15,7 @@ export const updateArchives = async (message: Message) => {
     const streams = await findArchivedStreams(channel.id);
     await saveStream(channel, streams);
   } catch (err) {
-    const message = err.message + "\n<" + CHANNEL_ENDPOINT + channel.id + ">";
+    const message = err.message + "\n<" + CHANNEL_ENDPOINT + channel.id + ">\n" + err.stack;
     await bot.alert(message);
     throw new Error(message);
   }

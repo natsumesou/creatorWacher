@@ -25,7 +25,7 @@ export const analyzeChats = async (snapshot: QueryDocumentSnapshot, context: Eve
     if (err instanceof ChatNotFoundError) {
       await processChatNotFound(bot, snapshot);
     } else {
-      const message = err.message + "\n<" + generateURL(snapshot.id)+">";
+      const message = err.message + "\n<" + generateURL(snapshot.id)+">\n" + err.stack;
       await bot.alert(message);
       await deleteStream(snapshot);
       throw new Error(message);
