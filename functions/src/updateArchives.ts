@@ -66,5 +66,5 @@ const saveStream = async (channel: any, streams: Array<any>) => {
 };
 
 const firstTimeToday = (now: Date) => {
-  return now.getHours() == 0 && (now.getMinutes() >= 0 && now.getMinutes() < 30);
+  return now.getHours() === 0 && (now.getMinutes() >= 0 && now.getMinutes() < 30);
 };
