@@ -4,18 +4,18 @@ import axios from "axios";
  * Discord通知用のクラス
  */
 export class Bot {
-  private generalWebhook: string;
+  private targetWebhook: string;
   private systemWebhook: string;
   private activityWebhook: string;
 
   /**
    *
-   * @param {string} generalWebhook 一般チャットの webhook url
+   * @param {string} targetWebhook 投稿先チャットの webhook url
    * @param {string} systemWebhook systemチャットの webhook url
    * @param {string} activityWebhook activityチャットの webhook url
    */
-  constructor(generalWebhook: string, systemWebhook: string, activityWebhook: string) {
-    this.generalWebhook = generalWebhook;
+  constructor(targetWebhook: string, systemWebhook: string, activityWebhook: string) {
+    this.targetWebhook = targetWebhook;
     this.systemWebhook = systemWebhook;
     this.activityWebhook = activityWebhook;
   }
@@ -25,7 +25,7 @@ export class Bot {
    * @param {string} message チャットに送信するメッセージ
    */
   async message(message: string) {
-    await axios.post(this.generalWebhook, {content: message});
+    await axios.post(this.targetWebhook, {content: message});
   }
 
   /**

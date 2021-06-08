@@ -12,7 +12,7 @@ export const publishCreatorsWatch = async () => {
   channels.forEach((channel) => {
     const obj = {
       id: channel.id,
-      title: channel.get("title"),
+      category: channel.get("category"),
     };
     topic.publish(Buffer.from(JSON.stringify(obj)));
   });

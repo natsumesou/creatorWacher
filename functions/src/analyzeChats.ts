@@ -5,8 +5,10 @@ import {QueryDocumentSnapshot} from "firebase-functions/lib/providers/firestore"
 import {EventContext} from "firebase-functions";
 
 export const analyzeChats = async (snapshot: QueryDocumentSnapshot, context: EventContext) => {
+  const doc = await snapshot.ref.parent.parent?.get();
+  const category = doc?.get("category");
   const bot = new Bot(
-      functions.config().discord.general,
+      functions.config().discord[category],
       functions.config().discord.system,
       functions.config().discord.activity,
   );

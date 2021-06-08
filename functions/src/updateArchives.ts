@@ -5,12 +5,12 @@ import {findArchivedStreams, CHANNEL_ENDPOINT} from "./lib/youtubeArchiveFinder"
 import {Bot} from "./lib/discordNotify";
 
 export const updateArchives = async (message: Message) => {
+  const channel = messageToJSON(message);
   const bot = new Bot(
-      functions.config().discord.general,
+      functions.config().discord[channel.category],
       functions.config().discord.system,
       functions.config().discord.activity,
   );
-  const channel = messageToJSON(message);
   try {
     const streams = await findArchivedStreams(channel.id);
     await saveStream(channel, streams);
