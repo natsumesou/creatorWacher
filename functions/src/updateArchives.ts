@@ -13,6 +13,7 @@ export const updateArchives = async (message: Message) => {
   );
   try {
     const now = new Date();
+    console.log("--------- " + now + " / " + now.getHours() + " : " + now.getMinutes());
     const result = await findArchivedStreams(channel.id);
     await saveStream(channel, result.streams);
     if (firstTimeToday(now)) {
