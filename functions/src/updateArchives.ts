@@ -13,7 +13,6 @@ export const updateArchives = async (message: Message) => {
   );
   try {
     const now = new Date();
-    console.log("--------- " + now + " / " + now.getHours() + " : " + now.getMinutes());
     const result = await findArchivedStreams(channel.id);
     await saveStream(channel, result.streams);
     if (firstTimeToday(now)) {
@@ -67,5 +66,6 @@ const saveStream = async (channel: any, streams: Array<any>) => {
 };
 
 const firstTimeToday = (now: Date) => {
-  return now.getHours() === 0 && (now.getMinutes() >= 0 && now.getMinutes() < 30);
+  // hourはUTCを考慮して0ではなく15にしてる
+  return now.getHours() === 16 && (now.getMinutes() >= 0 && now.getMinutes() < 30);
 };
