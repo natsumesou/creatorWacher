@@ -43,7 +43,7 @@ const parseJSONtoFindSubscribers = (json: any) => {
 };
 
 const parseJSONtoFindStreams = (json: any) => {
-  if (!json.contents.twoColumnBrowseResultsRenderer) {
+  if (!json.contents) {
     throw new Error("why ytInitialData is empty?\n" + JSON.stringify(json));
   }
   const videos = json.contents.twoColumnBrowseResultsRenderer.tabs[1].tabRenderer.content.sectionListRenderer.contents[0];
