@@ -30,7 +30,7 @@ const messageToJSON = (message: Message) => {
   return JSON.parse(jsonstr);
 };
 
-const updateChannel = async (channel: any, subscribeCount: number) => {
+const updateChannel = async (channel: any, subscribeCount: number|null) => {
   const db = admin.firestore();
   const channelRef = db.collection("channels").doc(channel.id);
   await channelRef.update({
