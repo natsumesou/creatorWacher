@@ -5,6 +5,11 @@ export const CHANNEL_ENDPOINT = "https://www.youtube.com/channel/";
 /**
  * チャンネルが存在しない場合のエラー
  */
+export class InvalidChannelJsonError extends Error {}
+
+/**
+ * チャンネルが存在しない場合のエラー
+ */
 export class ChannelNotExistError extends Error {}
 
 export const findArchivedStreams = async (channelId: string) => {
@@ -51,11 +56,11 @@ const parseJSONtoFindSubscribers = (json: any) => {
 };
 
 const parseJSONtoFindStreams = (json: any) => {
+  if (invalidJSONPayload(json)) {
+    throw new InvalidChannelJsonError("チャンネル動画のJSONデータが正常なコンテンツを返していません\n" + JSON.stringify(json));
+  }
   if (channelClosed(json)) {
     throw new ChannelNotExistError("このチャンネルは存在しません");
-  }
-  if (!json.contents) {
-    throw new Error("why ytInitialData is empty?\n" + JSON.stringify(json));
   }
   const videos = json.contents.twoColumnBrowseResultsRenderer.tabs[1].tabRenderer.content.sectionListRenderer.contents[0];
   if (videos.itemSectionRenderer.contents[0].gridRenderer === undefined) {
@@ -70,6 +75,10 @@ const parseJSONtoFindStreams = (json: any) => {
     return result;
   }, []);
   return streams.map((stream:any) => formatStream(stream));
+};
+
+const invalidJSONPayload = (json: any) => {
+  return Object.keys(json).length === 1 && Object.prototype.hasOwnProperty.call(json, "responseContext");
 };
 
 const channelClosed = (json: any) => {

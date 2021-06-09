@@ -1,7 +1,7 @@
 import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
 import {Message} from "firebase-functions/lib/providers/pubsub";
-import {findArchivedStreams, CHANNEL_ENDPOINT, ChannelNotExistError} from "./lib/youtubeArchiveFinder";
+import {findArchivedStreams, CHANNEL_ENDPOINT, ChannelNotExistError, InvalidChannelJsonError} from "./lib/youtubeArchiveFinder";
 import {Bot} from "./lib/discordNotify";
 
 export const updateArchives = async (message: Message) => {
@@ -22,6 +22,9 @@ export const updateArchives = async (message: Message) => {
     if (err instanceof ChannelNotExistError) {
       const message = err.message + "\n<" + CHANNEL_ENDPOINT + channel.id + ">";
       await bot.activity(message);
+    } else if (err instanceof InvalidChannelJsonError) {
+      // たまにチャンネル動画ページのJSONが空になる事があるので無視する
+      // 万が一これで本当のエラーを握りつぶしている可能性がないように一応厳密にチェックはしている…
     } else {
       const message = err.message + "\n<" + CHANNEL_ENDPOINT + channel.id + ">\n" + err.stack;
       await bot.alert(message);
