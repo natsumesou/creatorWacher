@@ -10,6 +10,13 @@ const PARALLEL_CNUMBER = 10;
  */
 export class ChatNotFoundError extends Error {}
 
+/**
+ * 配信のチャットログをパースしてスパチャやメンバー加入数を分析する
+ * returnで返すsubscribeCountはチャンネル登録者数ではなく配信でのメンバー加入数のこと
+ * @param {string} videoId video id
+ * @param {number} streamLengthSec video length
+ * @return {any} analyzed data
+ */
 export const findChatMessages = async (videoId: string, streamLengthSec: number) => {
   const chats = await fetchChatsParallel(videoId, streamLengthSec);
   if (chats.chatUnavailable) {
