@@ -254,7 +254,7 @@ const fetchChatData = async (apiKey: string, continuation: string, client: strin
 };
 
 const chatUnavailable = (source: string) => {
-  return source.match(/この動画ではチャットのリプレイを利用できません/) !== null;
+  return source.match(/この動画ではチャットのリプレイを利用できません|この動画のチャットのリプレイはオフになっています/) !== null;
 };
 
 const findContinuation = (json: any) => {
