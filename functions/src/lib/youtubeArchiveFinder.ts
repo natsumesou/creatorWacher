@@ -38,7 +38,10 @@ const getInitialJSON = (html: string) => {
 };
 
 const parseJSONtoFindSubscribers = (json: any) => {
-  const subscriberStr = json.header.c4TabbedHeaderRenderer.subscriberCountText.simpleText.replace(/チャンネル登録者数\s/, "").replace(/人/, "");
+  const subscriberStr = json.header.c4TabbedHeaderRenderer.subscriberCountText?.simpleText?.replace(/チャンネル登録者数\s/, "").replace(/人/, "");
+  if (!subscriberStr) {
+    return null;
+  }
   return kanjiToNum(subscriberStr);
 };
 
