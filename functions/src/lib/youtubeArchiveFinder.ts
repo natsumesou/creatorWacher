@@ -2,6 +2,11 @@ import axios from "axios";
 
 export const CHANNEL_ENDPOINT = "https://www.youtube.com/channel/";
 
+/**
+ * チャンネルが存在しない場合のエラー
+ */
+export class ChannelNotExistError extends Error {}
+
 export const findArchivedStreams = async (channelId: string) => {
   const response = await fetchVideoArchive(channelId);
   const initData = getInitialJSON(response.data);
@@ -46,6 +51,9 @@ const parseJSONtoFindSubscribers = (json: any) => {
 };
 
 const parseJSONtoFindStreams = (json: any) => {
+  if (channelClosed(json)) {
+    throw new ChannelNotExistError("このチャンネルは存在しません");
+  }
   if (!json.contents) {
     throw new Error("why ytInitialData is empty?\n" + JSON.stringify(json));
   }
@@ -62,6 +70,13 @@ const parseJSONtoFindStreams = (json: any) => {
     return result;
   }, []);
   return streams.map((stream:any) => formatStream(stream));
+};
+
+const channelClosed = (json: any) => {
+  if (json.alerts && json.alerts.length > 0) {
+    return json.alerts[0].alertRenderer?.text?.simpleText?.includes("このチャンネルは存在しません");
+  }
+  return false;
 };
 
 const formatStream = (stream: any) => {
