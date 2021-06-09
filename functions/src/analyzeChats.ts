@@ -49,23 +49,22 @@ const processChatNotFound = async (bot: Bot, snapshot: QueryDocumentSnapshot) =>
   const now = new Date();
   const publishedAt = snapshot.get("publishedAt").toDate();
 
-  if (passedDays(now, publishedAt) < 1) {
+  if (passedDays(now, publishedAt) < 7) {
     // 公開されて1日以内の場合はチャットが戻ってくる可能性があるので一度削除する
     await deleteStream(snapshot);
 
-    // 配信後2回目のクローリングのときだけメッセージを流す
+    // 配信後3回目のクローリングのときだけメッセージを流す
     // 初回のクローリング時点ではチャットが取得できないことが多いのでスルー
-    if (passedHours(now, publishedAt) > 0.5 && passedHours(now, publishedAt) < 1) {
+    if (passedHours(now, publishedAt) > 1 && passedHours(now, publishedAt) < 1.5) {
       const message = "チャットがオフになっている(もしくはYouTubeの仕様が変わった)可能性が高いため１日監視します。頻発する場合は仕様の再確認をしてください。\n" + generateURL(snapshot.id);
-      await Promise.all([
-        bot.message(formatNonChatMessage(snapshot)),
-        bot.activity(message),
-      ]);
-      functions.logger.warn(message);
+      await bot.activity(message);
     }
   } else {
-    const message = "チャットが戻らないまま1日経ったので監視を終了します\n" + generateURL(snapshot.id);
-    await bot.activity(message);
+    const message = "チャットが戻らないまま7日経ったので監視を終了します\n" + generateURL(snapshot.id);
+    await Promise.all([
+      bot.message(formatNonChatMessage(snapshot)),
+      bot.activity(message),
+    ]);
   }
 };
 
@@ -94,7 +93,7 @@ const formatMessage = (snapshot: QueryDocumentSnapshot, chats: any) => {
 };
 
 const formatNonChatMessage = (snapshot: QueryDocumentSnapshot, chats?: any) => {
-  const status = (!chats || chats?.chatAvailable) ? "[速報値]" : "[確定値]";
+  const status = (!chats || chats?.chatAvailable) ? "" : "[確定値]";
   return formatMessageBase(snapshot) +
     "\nチャットがオフのため詳細データなし" + status +
     "\n" + generateURL(snapshot.id);
