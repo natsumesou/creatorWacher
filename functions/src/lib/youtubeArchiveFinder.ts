@@ -66,6 +66,9 @@ const parseJSONtoFindStreams = (json: any) => {
   if (videos.itemSectionRenderer.contents[0].gridRenderer === undefined) {
     // 動画が1つもない場合(音楽系チャンネルだとたまに検索でヒットするけど動画ページが空の場合がある)
   }
+  if (!videos.itemSectionRenderer.contents[0].gridRenderer) {
+    throw new Error("why not items?\n" + JSON.stringify(videos.itemSectionRenderer));
+  }
   const streams = videos.itemSectionRenderer.contents[0].gridRenderer.items.reduce((result: Array<any>, item: any) => {
     // live予定やプレミアム公開、動画の場合はスキップし続ける
     const publishedDateText = item.gridVideoRenderer?.publishedTimeText?.simpleText || "";
