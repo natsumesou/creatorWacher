@@ -5,6 +5,10 @@ import {DocumentSnapshot} from "firebase-functions/lib/providers/firestore";
 import {Change, EventContext} from "firebase-functions";
 
 export const analyzeChats = async (change: Change<DocumentSnapshot>, context: EventContext) => {
+  if (!change.after.exists) {
+    // 削除の場合は何もしない
+    return;
+  }
   if (change.before.exists && change.after.get("chatAvailable") !== null && change.after.get("chatDisabled") !== null) {
     // すでにデータが存在していて、チャットの解析結果が入っている場合は自身の更新によるものなのでスルー
     return;
