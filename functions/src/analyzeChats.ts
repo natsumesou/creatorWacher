@@ -7,7 +7,6 @@ import {Message} from "firebase-functions/lib/providers/pubsub";
 
 export const analyzeChats = async (message: Message) => {
   const metadata = messageToJSON(message);
-  console.log("analyze: " + JSON.stringify(metadata));
 
   const db = admin.firestore();
   const streamRef = db.collection(`channels/${metadata.channelId}/streams`).doc(metadata.videoId);
@@ -34,10 +33,7 @@ export const analyzeChats = async (message: Message) => {
     }
   } catch (err) {
     if (err instanceof ChatNotFoundError) {
-      // チャットの状態を同期させる
-      if (stream.get("chatAvailable") === true || stream.get("chatDisabled") === true) {
-        await updateStream(stream, {chatAvailable: false, chatDisabled: false});
-      }
+      await updateStream(stream, {chatAvailable: false, chatDisabled: false});
       await processChatNotFound(bot, stream);
     } else {
       const message = err.message + "\n<" + generateURL(stream.id)+">\n" + err.stack;
