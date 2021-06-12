@@ -19,9 +19,10 @@ export class ChatNotFoundError extends Error {}
  */
 export const findChatMessages = async (videoId: string, streamLengthSec: number) => {
   const chats = await fetchChatsParallel(videoId, streamLengthSec);
-  if (chats.chatUnavailable) {
+  if (!chats.chatAvailable) {
     return {
-      chatAvailable: !chats.chatUnavailable,
+      chatAvailable: chats.chatAvailable,
+      chatDisabled: chats.chatDisabled,
       gameTitle: chats.gameTitle,
       chatCount: 0,
       superChatCount: 0,
@@ -41,6 +42,7 @@ export const findChatMessages = async (videoId: string, streamLengthSec: number)
 
   const result = {
     chatAvailable: true,
+    chatDisabled: false,
     gameTitle: chats.gameTitle,
     chatCount: chats.chatCount,
     superChatCount: Object.keys(superchats).length,
@@ -72,7 +74,8 @@ const fetchChatsParallel = async (videoId: string, streamLengthSec: number) => {
   if (params.length !== responses.length) {
     return {
       gameTitle: gameTitle,
-      chatUnavailable: true,
+      chatAvailable: false,
+      chatDisabled: true,
     };
   }
 
@@ -111,7 +114,7 @@ const fetchChatsParallel = async (videoId: string, streamLengthSec: number) => {
 };
 
 const getChatRequestParams = (html: string, json: any) => {
-  if (chatUnavailable(html)) {
+  if (chatDisabled(html)) {
     return null;
   }
   const apiKey = findKey("INNERTUBE_API_KEY", html);
@@ -253,7 +256,7 @@ const fetchChatData = async (apiKey: string, continuation: string, client: strin
   return response;
 };
 
-const chatUnavailable = (source: string) => {
+const chatDisabled = (source: string) => {
   return source.match(/この動画ではチャットのリプレイを利用できません|この動画のチャットのリプレイはオフになっています/) !== null;
 };
 

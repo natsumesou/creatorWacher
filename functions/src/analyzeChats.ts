@@ -1,11 +1,15 @@
 import * as functions from "firebase-functions";
 import {ChatNotFoundError, findChatMessages, VIDEO_ENDPOINT} from "./lib/youtubeChatFinder";
 import {Bot} from "./lib/discordNotify";
-import {QueryDocumentSnapshot} from "firebase-functions/lib/providers/firestore";
-import {EventContext} from "firebase-functions";
+import {DocumentSnapshot} from "firebase-functions/lib/providers/firestore";
+import {Change, EventContext} from "firebase-functions";
 
-export const analyzeChats = async (snapshot: QueryDocumentSnapshot, context: EventContext) => {
-  const doc = await snapshot.ref.parent.parent?.get();
+export const analyzeChats = async (change: Change<DocumentSnapshot>, context: EventContext) => {
+  if (change.before.exists && change.after.get("chatAvailable") !== null && change.after.get("chatDisabled") !== null) {
+    // すでにデータが存在していて、チャットの解析結果が入っている場合は自身の更新によるものなのでスルー
+    return;
+  }
+  const doc = await change.after.ref.parent.parent?.get();
   const category = doc?.get("category");
   const bot = new Bot(
       functions.config().discord[category],
@@ -13,49 +17,42 @@ export const analyzeChats = async (snapshot: QueryDocumentSnapshot, context: Eve
       functions.config().discord.activity,
   );
   try {
-    const chats = await findChatMessages(snapshot.id, snapshot.get("streamLengthSec"));
+    const chats = await findChatMessages(change.after.id, change.after.get("streamLengthSec"));
+    await updateStream(change.after, chats);
     if (!chats.chatAvailable) {
-      await updateStream(snapshot, chats);
-      await bot.message(formatNonChatMessage(snapshot, chats));
-      return;
+      await bot.message(formatNonChatMessage(change.after, chats));
+    } else {
+      await bot.message(formatMessage(change.after, chats));
     }
-    await updateStream(snapshot, chats);
-    await bot.message(formatMessage(snapshot, chats));
   } catch (err) {
     if (err instanceof ChatNotFoundError) {
-      await processChatNotFound(bot, snapshot);
+      // チャットの状態を同期させる
+      if (change.after.get("chatAvailable") === true || change.after.get("chatDisabled") === true) {
+        await updateStream(change.after, {chatAvailable: false, chatDisabled: false});
+      }
+      await processChatNotFound(bot, change.after);
     } else {
-      const message = err.message + "\n<" + generateURL(snapshot.id)+">\n" + err.stack;
+      const message = err.message + "\n<" + generateURL(change.after.id)+">\n" + err.stack;
       await bot.alert(message);
-      await deleteStream(snapshot);
       throw new Error(message);
     }
   }
 };
 
-const updateStream = async (snapshot: QueryDocumentSnapshot, data: any) => {
+const updateStream = async (snapshot: DocumentSnapshot, data: any) => {
   await snapshot.ref.update(data).catch((err) => {
     functions.logger.error(err.message);
   });
 };
 
-const deleteStream = async (snapshot: QueryDocumentSnapshot) => {
-  await snapshot.ref.delete().catch((err) => {
-    functions.logger.error(err.message);
-  });
-};
-
-const processChatNotFound = async (bot: Bot, snapshot: QueryDocumentSnapshot) => {
+const processChatNotFound = async (bot: Bot, snapshot: DocumentSnapshot) => {
   const now = new Date();
   const publishedAt = snapshot.get("publishedAt").toDate();
 
   if (passedDays(now, publishedAt) < 7) {
-    // 公開されて1日以内の場合はチャットが戻ってくる可能性があるので一度削除する
-    await deleteStream(snapshot);
-
-    // 配信後3回目のクローリングのときだけメッセージを流す
+    // 配信後4回目のクローリングのときだけメッセージを流す
     // 初回のクローリング時点ではチャットが取得できないことが多いのでスルー
-    if (passedHours(now, publishedAt) > 1 && passedHours(now, publishedAt) < 1.5) {
+    if (passedHours(now, publishedAt) > 1.5 && passedHours(now, publishedAt) < 2) {
       const message = "チャットがオフになっている(もしくはYouTubeの仕様が変わった)可能性が高いため１日監視します。頻発する場合は仕様の再確認をしてください。\n" + generateURL(snapshot.id);
       await bot.activity(message);
     }
@@ -83,7 +80,7 @@ const getDateDiff = (now: Date, old: Date, unitMillisec: number) => {
   return Math.abs(millisBetween / unitMillisec);
 };
 
-const formatMessage = (snapshot: QueryDocumentSnapshot, chats: any) => {
+const formatMessage = (snapshot: DocumentSnapshot, chats: any) => {
   return formatMessageBase(snapshot) +
     "\nコメント数: " + threeDigit(chats.chatCount) +
     "\nスパチャ数: " + threeDigit(chats.superChatCount) +
@@ -92,14 +89,14 @@ const formatMessage = (snapshot: QueryDocumentSnapshot, chats: any) => {
     "\n" + generateURL(snapshot.id);
 };
 
-const formatNonChatMessage = (snapshot: QueryDocumentSnapshot, chats?: any) => {
+const formatNonChatMessage = (snapshot: DocumentSnapshot, chats?: any) => {
   const status = (!chats || chats?.chatAvailable) ? "" : "[確定値]";
   return formatMessageBase(snapshot) +
     "\nチャットがオフのため詳細データなし" + status +
     "\n" + generateURL(snapshot.id);
 };
 
-const formatMessageBase = (snapshot: QueryDocumentSnapshot) => {
+const formatMessageBase = (snapshot: DocumentSnapshot) => {
   return snapshot.get("title") +
   "\n視聴数: " + threeDigit(snapshot.get("viewCount"));
 };

@@ -57,11 +57,16 @@ const saveStream = async (channel: any, streams: Array<any>) => {
     });
 
     if (doc && doc.exists) {
+      if (doc.get("chatDisabled") === null || (doc.get("chatDisabled") === false && (doc.get("chatAvailable") === false))) {
+        // チャットの取得状態が不明、若しくは前回の更新時にチャットの取得に失敗している場合は再チェックを促す
+        await doc.ref.update({chatAvailable: null, chatDisabled: null});
+      }
       continue;
     }
     delete stream.id;
     await streamRef.create({...stream,
-      chatAvailable: true,
+      chatAvailable: null, // チャットが取得できている場合はtrue、そうでない場合はfalse
+      chatDisabled: null, // チャットが無効にされいてる場合はtrue、無効にされているかわからないけど取得できない場合含めその他はfalse
       gameTitle: null,
       chatCount: 0,
       superChatCount: 0,
