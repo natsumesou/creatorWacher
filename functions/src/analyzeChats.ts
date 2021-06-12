@@ -2,45 +2,56 @@ import * as functions from "firebase-functions";
 import {ChatNotFoundError, findChatMessages, VIDEO_ENDPOINT} from "./lib/youtubeChatFinder";
 import {Bot} from "./lib/discordNotify";
 import {DocumentSnapshot} from "firebase-functions/lib/providers/firestore";
-import {Change, EventContext} from "firebase-functions";
+import * as admin from "firebase-admin";
+import {Message} from "firebase-functions/lib/providers/pubsub";
 
-export const analyzeChats = async (change: Change<DocumentSnapshot>, context: EventContext) => {
-  if (!change.after.exists) {
-    // 削除の場合は何もしない
-    return;
+export const analyzeChats = async (message: Message) => {
+  const metadata = messageToJSON(message);
+
+  const db = admin.firestore();
+  const streamRef = db.collection(`channels/${metadata.channelId}/streams`).doc(metadata.videoId);
+  const stream = await streamRef.get().catch((err) => {
+    functions.logger.error(err.message);
+  });
+  const channel = await streamRef.parent.parent?.get();
+  if (!channel?.exists || !stream?.exists) {
+    throw new Error(`チャンネルか動画データがfirestoreから取得できません: ${JSON.stringify(metadata)}`);
   }
-  if (change.before.exists && change.after.get("chatAvailable") !== null && change.after.get("chatDisabled") !== null) {
-    // すでにデータが存在していて、チャットの解析結果が入っている場合は自身の更新によるものなのでスルー
-    return;
-  }
-  const doc = await change.after.ref.parent.parent?.get();
-  const category = doc?.get("category");
+  const category = channel.get("category");
   const bot = new Bot(
       functions.config().discord[category],
       functions.config().discord.system,
       functions.config().discord.activity,
   );
   try {
-    const chats = await findChatMessages(change.after.id, change.after.get("streamLengthSec"));
-    await updateStream(change.after, chats);
+    const chats = await findChatMessages(stream.id, stream.get("streamLengthSec"));
+    await updateStream(stream, chats);
     if (!chats.chatAvailable) {
-      await bot.message(formatNonChatMessage(change.after, chats));
+      await bot.message(formatNonChatMessage(stream, chats));
     } else {
-      await bot.message(formatMessage(change.after, chats));
+      await bot.message(formatMessage(stream, chats));
     }
   } catch (err) {
     if (err instanceof ChatNotFoundError) {
       // チャットの状態を同期させる
-      if (change.after.get("chatAvailable") === true || change.after.get("chatDisabled") === true) {
-        await updateStream(change.after, {chatAvailable: false, chatDisabled: false});
+      if (stream.get("chatAvailable") === true || stream.get("chatDisabled") === true) {
+        await updateStream(stream, {chatAvailable: false, chatDisabled: false});
       }
-      await processChatNotFound(bot, change.after);
+      await processChatNotFound(bot, stream);
     } else {
-      const message = err.message + "\n<" + generateURL(change.after.id)+">\n" + err.stack;
+      const message = err.message + "\n<" + generateURL(stream.id)+">\n" + err.stack;
       await bot.alert(message);
       throw new Error(message);
     }
   }
+};
+
+const messageToJSON = (message: Message) => {
+  const jsonstr = Buffer.from(message.data, "base64").toString("utf-8");
+  return JSON.parse(jsonstr) as {
+    channelId: string,
+    videoId: string,
+  };
 };
 
 const updateStream = async (snapshot: DocumentSnapshot, data: any) => {

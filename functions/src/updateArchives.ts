@@ -3,6 +3,8 @@ import * as admin from "firebase-admin";
 import {Message} from "firebase-functions/lib/providers/pubsub";
 import {findArchivedStreams, CHANNEL_ENDPOINT, ChannelNotExistError, InvalidChannelJsonError} from "./lib/youtubeArchiveFinder";
 import {Bot} from "./lib/discordNotify";
+import {PubSub} from "@google-cloud/pubsub";
+import {ANALYZE_TOPIC} from ".";
 
 export const updateArchives = async (message: Message) => {
   const channel = messageToJSON(message);
@@ -57,12 +59,13 @@ const saveStream = async (channel: any, streams: Array<any>) => {
     });
 
     if (doc && doc.exists) {
-      if (doc.get("chatDisabled") === null || (doc.get("chatDisabled") === false && (doc.get("chatAvailable") === false))) {
+      if (doc.get("chatDisabled") === null || (doc.get("chatAvailable") === false && doc.get("chatDisabled") === false)) {
         // チャットの取得状態が不明、若しくは前回の更新時にチャットの取得に失敗している場合は再チェックを促す
-        await doc.ref.update({chatAvailable: null, chatDisabled: null});
+        await publishAnalyzeStream(doc.id, doc.ref.parent.id);
       }
       continue;
     }
+    const videoId = stream.id;
     delete stream.id;
     await streamRef.create({...stream,
       chatAvailable: null, // チャットが取得できている場合はtrue、そうでない場合はfalse
@@ -75,10 +78,21 @@ const saveStream = async (channel: any, streams: Array<any>) => {
     }).catch((err) => {
       functions.logger.error(err.message);
     });
+    await publishAnalyzeStream(videoId, channel.id);
   }
 };
 
 const firstTimeToday = (now: Date) => {
   // hourはUTCを考慮して0ではなく15にしてる
   return now.getHours() === 15 && (now.getMinutes() >= 0 && now.getMinutes() < 30);
+};
+
+const publishAnalyzeStream = async (videoId: string, channelId: string) => {
+  const pubsub = new PubSub({projectId: process.env.GCP_PROJECT});
+  const topic = await pubsub.topic(ANALYZE_TOPIC);
+  const obj = {
+    videoId: videoId,
+    channelId: channelId,
+  };
+  topic.publish(Buffer.from(JSON.stringify(obj)));
 };

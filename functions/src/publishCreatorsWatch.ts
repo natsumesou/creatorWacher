@@ -1,6 +1,6 @@
 import * as admin from "firebase-admin";
 import {PubSub} from "@google-cloud/pubsub";
-import {TOPIC} from "./index";
+import {WATCH_TOPIC} from "./index";
 
 export const publishCreatorsWatch = async () => {
   const db = admin.firestore();
@@ -8,7 +8,7 @@ export const publishCreatorsWatch = async () => {
   const channels = await channelRef.get();
 
   const pubsub = new PubSub({projectId: process.env.GCP_PROJECT});
-  const topic = await pubsub.topic(TOPIC);
+  const topic = await pubsub.topic(WATCH_TOPIC);
   channels.forEach((channel) => {
     const obj = {
       id: channel.id,

@@ -8,7 +8,8 @@ import {RuntimeOptions} from "firebase-functions";
 admin.initializeApp();
 
 const REGION = "asia-northeast1";
-export const TOPIC = "watch-creator";
+export const WATCH_TOPIC = "watch-creator";
+export const ANALYZE_TOPIC = "analyze-chat";
 
 const weakRuntimeOpts: RuntimeOptions = {
   timeoutSeconds: 60,
@@ -20,5 +21,5 @@ const strongRuntimeOpts: RuntimeOptions = {
 };
 
 export const PublishCreatorsWatchFunction = functions.runWith(weakRuntimeOpts).region(REGION).pubsub.schedule("every 30 minutes").onRun(publishCreatorsWatch);
-export const UpdateArchivesFunction = functions.runWith(weakRuntimeOpts).region(REGION).pubsub.topic(TOPIC).onPublish(updateArchives);
-export const AnalyzeChatsFunction = functions.runWith(strongRuntimeOpts).region(REGION).firestore.document("channels/{channelId}/streams/{videoId}").onWrite(analyzeChats);
+export const UpdateArchivesFunction = functions.runWith(weakRuntimeOpts).region(REGION).pubsub.topic(WATCH_TOPIC).onPublish(updateArchives);
+export const AnalyzeChatsFunction = functions.runWith(strongRuntimeOpts).region(REGION).pubsub.topic(WATCH_TOPIC).onPublish(analyzeChats);
