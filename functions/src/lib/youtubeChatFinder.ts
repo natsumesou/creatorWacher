@@ -41,8 +41,8 @@ export const findChatMessages = async (videoId: string, streamLengthSec: number)
   }
 
   const result = {
-    chatAvailable: true,
-    chatDisabled: false,
+    chatAvailable: chats.chatAvailable,
+    chatDisabled: chats.chatDisabled,
     gameTitle: chats.gameTitle,
     chatCount: chats.chatCount,
     superChatCount: Object.keys(superchats).length,
@@ -104,6 +104,8 @@ const fetchChatsParallel = async (videoId: string, streamLengthSec: number) => {
     total.subscribes = {...total.subscribes, ...chat.subscribes};
     return total;
   }, {
+    chatAvailable: true,
+    chatDisabled: false,
     gameTitle: gameTitle,
     chatCount: 0,
     superchats: {},
