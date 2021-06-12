@@ -61,7 +61,8 @@ const saveStream = async (channel: any, streams: Array<any>) => {
     if (doc && doc.exists) {
       if (doc.get("chatDisabled") === null || (doc.get("chatAvailable") === false && doc.get("chatDisabled") === false)) {
         // チャットの取得状態が不明、若しくは前回の更新時にチャットの取得に失敗している場合は再チェックを促す
-        await publishAnalyzeStream(doc.id, doc.ref.parent.id);
+        console.log(`update for reanalyze: ${doc.id} / ${channel.id}`);
+        await publishAnalyzeStream(doc.id, channel.id);
       }
       continue;
     }
@@ -78,6 +79,7 @@ const saveStream = async (channel: any, streams: Array<any>) => {
     }).catch((err) => {
       functions.logger.error(err.message);
     });
+    console.log(`analyze: ${videoId} / ${channel.id}`);
     await publishAnalyzeStream(videoId, channel.id);
   }
 };

@@ -7,6 +7,7 @@ import {Message} from "firebase-functions/lib/providers/pubsub";
 
 export const analyzeChats = async (message: Message) => {
   const metadata = messageToJSON(message);
+  console.log("analyze: " + JSON.stringify(metadata));
 
   const db = admin.firestore();
   const streamRef = db.collection(`channels/${metadata.channelId}/streams`).doc(metadata.videoId);
