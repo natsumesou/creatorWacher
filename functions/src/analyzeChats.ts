@@ -14,7 +14,7 @@ export const analyzeChats = async (message: Message) => {
     functions.logger.error(err.message);
   });
   const channel = await streamRef.parent.parent?.get();
-  if (!channel?.exists || !stream?.exists) {
+  if (!channel?.exists || !(stream && stream?.exists)) {
     throw new Error(`チャンネルか動画データがfirestoreから取得できません: ${JSON.stringify(metadata)}`);
   }
   const category = channel.get("category");
