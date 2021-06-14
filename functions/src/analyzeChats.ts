@@ -80,6 +80,11 @@ const saveSuperChats = async (snapshot: DocumentSnapshot, superChats: {[id:strin
       i = 0;
     }
   }
+  if (i !== limit) {
+    await batch.commit().catch((err) => {
+      functions.logger.error(err.message);
+    });
+  }
 };
 
 const processChatNotFound = async (bot: Bot, snapshot: DocumentSnapshot) => {
