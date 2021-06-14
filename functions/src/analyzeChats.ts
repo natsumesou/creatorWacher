@@ -1,5 +1,5 @@
 import * as functions from "firebase-functions";
-import {ChatNotFoundError, findChatMessages, VIDEO_ENDPOINT} from "./lib/youtubeChatFinder";
+import {ChatNotFoundError, findChatMessages, SuperChat, VIDEO_ENDPOINT} from "./lib/youtubeChatFinder";
 import {Bot} from "./lib/discordNotify";
 import {DocumentSnapshot} from "firebase-functions/lib/providers/firestore";
 import * as admin from "firebase-admin";
@@ -24,12 +24,13 @@ export const analyzeChats = async (message: Message) => {
       functions.config().discord.activity,
   );
   try {
-    const chats = await findChatMessages(stream.id, stream.get("streamLengthSec"));
-    await updateStream(stream, chats);
-    if (!chats.chatAvailable) {
-      await bot.message(formatNonChatMessage(stream, chats));
+    const result = await findChatMessages(stream.id, stream.get("streamLengthSec"));
+    await updateStream(stream, result.stream);
+    if (!result.stream.chatAvailable) {
+      await bot.message(formatNonChatMessage(stream, result.stream));
     } else {
-      await bot.message(formatMessage(stream, chats));
+      await saveSuperChats(stream, result.superChats);
+      await bot.message(formatMessage(stream, result.stream));
     }
   } catch (err) {
     if (err instanceof ChatNotFoundError) {
@@ -57,6 +58,28 @@ const updateStream = async (snapshot: DocumentSnapshot, data: any) => {
   await snapshot.ref.update({...data, updatedAt: new Date()}).catch((err) => {
     functions.logger.error(err.message);
   });
+};
+
+const saveSuperChats = async (snapshot: DocumentSnapshot, superChats: {[id:string]: SuperChat}) => {
+  const db = admin.firestore();
+  let batch = db.batch();
+  const limit = 500;
+  let i = 0;
+  for (const id in superChats) {
+    if (!Object.prototype.hasOwnProperty.call(superChats, id)) {
+      continue;
+    }
+    const doc = snapshot.ref.collection("superChats").doc(id);
+    batch.set(doc, superChats[id]);
+    i += 1;
+    if (i === limit) {
+      await batch.commit().catch((err) => {
+        functions.logger.error(err.message);
+      });
+      batch = db.batch();
+      i = 0;
+    }
+  }
 };
 
 const processChatNotFound = async (bot: Bot, snapshot: DocumentSnapshot) => {

@@ -5,6 +5,15 @@ export const VIDEO_ENDPOINT = "https://www.youtube.com/watch";
 const CHAT_ENDPOINT = "https://www.youtube.com/youtubei/v1/live_chat/get_live_chat_replay";
 const PARALLEL_CNUMBER = 10;
 
+export type SuperChat = {
+  supporterChannelId: string,
+  supporterDisplayName: string,
+  paidAt: Date,
+  amount: number,
+  unit: string,
+  amountText: string,
+};
+
 /**
  * チャットデータが取得できなかった場合のエラー
  */
@@ -21,13 +30,16 @@ export const findChatMessages = async (videoId: string, streamLengthSec: number)
   const chats = await fetchChatsParallel(videoId, streamLengthSec);
   if (!chats.chatAvailable) {
     return {
-      chatAvailable: chats.chatAvailable,
-      chatDisabled: chats.chatDisabled,
-      gameTitle: chats.gameTitle,
-      chatCount: 0,
-      superChatCount: 0,
-      superChatAmount: 0,
-      subscribeCount: 0,
+      stream: {
+        chatAvailable: chats.chatAvailable,
+        chatDisabled: chats.chatDisabled,
+        gameTitle: chats.gameTitle,
+        chatCount: 0,
+        superChatCount: 0,
+        superChatAmount: 0,
+        subscribeCount: 0,
+      },
+      superChats: {},
     };
   }
 
@@ -35,19 +47,21 @@ export const findChatMessages = async (videoId: string, streamLengthSec: number)
   const subscribes = chats.subscribes;
 
   let amount = 0;
-  const rate = new ExchangeRateManager();
   for (const key of Object.keys(superchats)) {
-    amount += stringToAmount(rate, superchats[key]);
+    amount += superchats[key].amount;
   }
 
   const result = {
-    chatAvailable: chats.chatAvailable,
-    chatDisabled: chats.chatDisabled,
-    gameTitle: chats.gameTitle,
-    chatCount: chats.chatCount,
-    superChatCount: Object.keys(superchats).length,
-    superChatAmount: amount,
-    subscribeCount: Object.keys(subscribes).length,
+    stream: {
+      chatAvailable: chats.chatAvailable,
+      chatDisabled: chats.chatDisabled,
+      gameTitle: chats.gameTitle,
+      chatCount: chats.chatCount,
+      superChatCount: Object.keys(superchats).length,
+      superChatAmount: amount,
+      subscribeCount: Object.keys(subscribes).length,
+    },
+    superChats: superchats,
   };
   return result;
 };
@@ -283,6 +297,8 @@ const findVariable = (keyName: string, source: string, minChar: number) => {
 };
 
 const processChats = (chats: Array<any>, chatIds: Array<string|null>) => {
+  const rate = new ExchangeRateManager();
+
   let firstChatId:string|null = null;
   let chatCount = 0;
   const superchats:any = {};
@@ -290,7 +306,16 @@ const processChats = (chats: Array<any>, chatIds: Array<string|null>) => {
   const end = chats.some((chat: any) => {
     return chat.replayChatItemAction.actions.some((action: any) => {
       if (action.addChatItemAction?.item?.liveChatPaidMessageRenderer) {
-        superchats[action.addChatItemAction.item.liveChatPaidMessageRenderer.id] = action.addChatItemAction.item.liveChatPaidMessageRenderer.purchaseAmountText.simpleText;
+        const amountText = action.addChatItemAction.item.liveChatPaidMessageRenderer.purchaseAmountText.simpleText;
+        const amountinfo = stringToAmount(rate, amountText);
+        superchats[action.addChatItemAction.item.liveChatPaidMessageRenderer.id] = {
+          supporterChannelId: action.addChatItemAction.item.liveChatPaidMessageRenderer.authorExternalChannelId,
+          supporterDisplayName: action.addChatItemAction.item.liveChatPaidMessageRenderer.authorName.simpleText,
+          paidAt: new Date(parseInt(action.addChatItemAction.item.liveChatPaidMessageRenderer.timestampUsec)),
+          amount: amountinfo.amount,
+          unit: amountinfo.unit,
+          amountText: amountText,
+        } as SuperChat;
       }
       if (action.addLiveChatTickerItemAction?.item?.liveChatTickerPaidMessageItemRenderer) {
         // スパチャの処理が上とかぶるのでこちらは無視
@@ -333,6 +358,10 @@ const stringToAmount = (rate: ExchangeRateManager, str: string) => {
   if (match === null) {
     throw new Error("通貨の処理中にエラーが発生しました:" + str);
   }
+  const unit = match[1].trim();
   const price = parseFloat(match[2].replace(",", ""));
-  return price * rate.getCurrentRate(match[1].trim());
+  return {
+    amount: price * rate.getCurrentRate(unit),
+    unit: unit,
+  };
 };
