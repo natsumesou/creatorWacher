@@ -29,7 +29,7 @@ export const analyzeChats = async (message: Message) => {
     if (!result.stream.chatAvailable) {
       await bot.message(formatNonChatMessage(stream, result.stream));
     } else {
-      await saveSuperChats(stream, result.superChats);
+      await saveSuperChats(metadata, result.superChats);
       await bot.message(formatMessage(stream, result.stream));
     }
   } catch (err) {
@@ -60,16 +60,20 @@ const updateStream = async (snapshot: DocumentSnapshot, data: any) => {
   });
 };
 
-const saveSuperChats = async (snapshot: DocumentSnapshot, superChats: {[id:string]: SuperChat}) => {
+const saveSuperChats = async (metadata: any, superChats: {[id:string]: SuperChat}) => {
   const db = admin.firestore();
   let batch = db.batch();
   const limit = 500;
   let i = 0;
+  /* eslint-disable guard-for-in */
   for (const id in superChats) {
     if (!Object.prototype.hasOwnProperty.call(superChats, id)) {
+      console.log("!! continue?: " + id);
+      console.log(JSON.stringify(superChats));
       continue;
     }
-    const doc = snapshot.ref.collection("superChats").doc(id);
+    console.log("!! superchat: " + id);
+    const doc = db.collection(`channels/${metadata.channelId}/streams/${metadata.videoId}/superChats`).doc(id);
     batch.set(doc, superChats[id]);
     i += 1;
     if (i === limit) {
@@ -81,6 +85,7 @@ const saveSuperChats = async (snapshot: DocumentSnapshot, superChats: {[id:strin
     }
   }
   if (i !== limit) {
+    console.log("!! commit: " + i);
     await batch.commit().catch((err) => {
       functions.logger.error(err.message);
     });
