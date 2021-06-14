@@ -311,7 +311,7 @@ const processChats = (chats: Array<any>, chatIds: Array<string|null>) => {
         superchats[action.addChatItemAction.item.liveChatPaidMessageRenderer.id] = {
           supporterChannelId: action.addChatItemAction.item.liveChatPaidMessageRenderer.authorExternalChannelId,
           supporterDisplayName: action.addChatItemAction.item.liveChatPaidMessageRenderer.authorName.simpleText,
-          paidAt: new Date(parseInt(action.addChatItemAction.item.liveChatPaidMessageRenderer.timestampUsec)),
+          paidAt: new Date(parseInt(action.addChatItemAction.item.liveChatPaidMessageRenderer.timestampUsec.slice(0, -3))),
           amount: amountinfo.amount,
           unit: amountinfo.unit,
           amountText: amountText,

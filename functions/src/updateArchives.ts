@@ -46,7 +46,7 @@ const updateChannel = async (channel: any, subscribeCount: number|null) => {
   await channelRef.update({
     subscribeCount: subscribeCount,
   }).catch((err) => {
-    functions.logger.error(err.message);
+    functions.logger.error(err.message + "\n" + err.stack);
   });
 };
 
@@ -55,7 +55,7 @@ const saveStream = async (channel: any, streams: Array<any>) => {
   for (const stream of streams) {
     const streamRef = db.collection(`channels/${channel.id}/streams`).doc(stream.id);
     const doc = await streamRef.get().catch((err) => {
-      functions.logger.error(err.message);
+      functions.logger.error(err.message + "\n" + err.stack);
     });
 
     if (doc && doc.exists) {
@@ -76,7 +76,7 @@ const saveStream = async (channel: any, streams: Array<any>) => {
       superChatAmount: 0,
       subscribeCount: 0,
     }).catch((err) => {
-      functions.logger.error(err.message);
+      functions.logger.error(err.message + "\n" + err.stack);
     });
     await publishAnalyzeStream(videoId, channel.id);
   }

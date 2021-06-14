@@ -11,7 +11,7 @@ export const analyzeChats = async (message: Message) => {
   const db = admin.firestore();
   const streamRef = db.collection(`channels/${metadata.channelId}/streams`).doc(metadata.videoId);
   const stream = await streamRef.get().catch((err) => {
-    functions.logger.error(err.message);
+    functions.logger.error(err.message + "\n" + err.stack);
   });
   const channel = await streamRef.parent.parent?.get();
   if (!channel?.exists || !(stream && stream?.exists)) {
@@ -56,7 +56,7 @@ const messageToJSON = (message: Message) => {
 
 const updateStream = async (snapshot: DocumentSnapshot, data: any) => {
   await snapshot.ref.update({...data, updatedAt: new Date()}).catch((err) => {
-    functions.logger.error(err.message);
+    functions.logger.error(err.message + "\n" + err.stack);
   });
 };
 
@@ -65,29 +65,24 @@ const saveSuperChats = async (metadata: any, superChats: {[id:string]: SuperChat
   let batch = db.batch();
   const limit = 500;
   let i = 0;
-  /* eslint-disable guard-for-in */
   for (const id in superChats) {
     if (!Object.prototype.hasOwnProperty.call(superChats, id)) {
-      console.log("!! continue?: " + id);
-      console.log(JSON.stringify(superChats));
       continue;
     }
-    console.log("!! superchat: " + id);
     const doc = db.collection(`channels/${metadata.channelId}/streams/${metadata.videoId}/superChats`).doc(id);
     batch.set(doc, superChats[id]);
     i += 1;
     if (i === limit) {
       await batch.commit().catch((err) => {
-        functions.logger.error(err.message);
+        functions.logger.error(err.message + "\n" + err.stack);
       });
       batch = db.batch();
       i = 0;
     }
   }
   if (i !== limit) {
-    console.log("!! commit: " + i);
     await batch.commit().catch((err) => {
-      functions.logger.error(err.message);
+      functions.logger.error(err.message + "\n" + err.stack);
     });
   }
 };
