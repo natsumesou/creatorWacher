@@ -52,7 +52,7 @@ const messageToJSON = (message: Message) => {
 };
 
 const updateStream = async (snapshot: DocumentSnapshot, data: any) => {
-  await snapshot.ref.update(data).catch((err) => {
+  await snapshot.ref.update({...data, updatedAt: new Date()}).catch((err) => {
     functions.logger.error(err.message);
   });
 };
