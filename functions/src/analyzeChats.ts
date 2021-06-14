@@ -33,7 +33,7 @@ export const analyzeChats = async (message: Message) => {
     }
   } catch (err) {
     if (err instanceof ChatNotFoundError) {
-      if (stream.get("chatAvailable") !== false && stream.get("chatAvailable") !== false) {
+      if (stream.get("chatAvailable") !== false || stream.get("chatAvailable") !== false) {
         await updateStream(stream, {chatAvailable: false, chatDisabled: false});
       }
       await processChatNotFound(bot, stream);
