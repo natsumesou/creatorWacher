@@ -18,7 +18,7 @@ export const fetchSuperChats = async () => {
     tempChannels.push(channel);
   });
 
-  let count = 0;
+  let update = false;
 
   for (const channel of tempChannels) {
     const streams = await channel.ref.collection("streams").get().catch((err) => {
@@ -37,19 +37,19 @@ export const fetchSuperChats = async () => {
     for (const stream of tempStreams) {
       const superChat = await stream.ref.collection("superChats").limit(1).get();
       if (superChat.size === 0 && stream.get("superChatCount") !== 0) {
-        functions.logger.info(`update superchats: ${channel.id}/streams/${stream.id}`);
+        functions.logger.info(`update superchats: ${channel.get("title")} / ${channel.id}/streams/${stream.id}`);
         const result = await findChatMessages(stream.id, stream.get("streamLengthSec"));
         if (result.stream.chatAvailable) {
           await saveSuperChats(channel.id, stream.id, result.superChats);
+          functions.logger.info("------ updated");
+          update = true;
         }
-        count += 1;
       }
-      if (count === 5) {
+      if (update) {
         break;
       }
     }
-    functions.logger.info(`----- updated ${count} streams`);
-    if (count === 5) {
+    if (update) {
       break;
     }
   }
