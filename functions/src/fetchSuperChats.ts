@@ -1,6 +1,9 @@
 import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
 import {findChatMessages, SuperChat} from "./lib/youtubeChatFinder";
+import {Message} from "firebase-functions/lib/providers/pubsub";
+import {TEMP_ANALYZE_TOPIC} from ".";
+import {PubSub} from "@google-cloud/pubsub";
 
 export const fetchSuperChats = async () => {
   const db = admin.firestore();
@@ -35,19 +38,41 @@ export const fetchSuperChats = async () => {
     for (const stream of tempStreams) {
       const superChat = await stream.ref.collection("superChats").limit(1).get();
       if (superChat.size === 0 && stream.get("superChatCount") !== 0) {
-        functions.logger.info(`update superchats: ${channel.get("title")} / ${channel.id}/streams/${stream.id}`);
-        const result = await findChatMessages(stream.id, stream.get("streamLengthSec"));
-        if (result.stream.chatAvailable) {
-          await saveSuperChats(channel.id, stream.id, result.superChats);
-          functions.logger.info(`------ updated ${channel.id}/streams/${stream.id}`);
-        } else {
-          functions.logger.info(`------ chat disabled..? ${channel.id}/streams/${stream.id}`);
-        }
-        return;
+        const pubsub = new PubSub({projectId: process.env.GCP_PROJECT});
+        const topic = await pubsub.topic(TEMP_ANALYZE_TOPIC);
+        const obj = {
+          videoId: stream.id,
+          channelId: channel.id,
+          streamLengthSec: stream.get("streamLengthSec"),
+        };
+        topic.publish(Buffer.from(JSON.stringify(obj)));
       }
+      break;
     }
   }
   functions.logger.info("------ all update complated!!");
+};
+
+export const tempAnalyzeChat = async (message: Message) => {
+  const metadata = messageToJSON(message);
+  const result = await findChatMessages(metadata.channelId, metadata.streamLengthSec);
+  if (result.stream.chatAvailable) {
+    await saveSuperChats(metadata.channelId, metadata.videoId, result.superChats);
+    functions.logger.info(`------ updated ${metadata.channelId}/streams/${metadata.videoId}`);
+  } else {
+    functions.logger.info(`------ chat disabled..? ${metadata.channelId}/streams/${metadata.videoId}`);
+  }
+};
+
+const messageToJSON = (message: Message) => {
+  const jsonstr = Buffer.from(message.data, "base64").toString("utf-8");
+  const result = JSON.parse(jsonstr);
+  result.streamLengthSec = parseInt(result.streamLengthSec);
+  return result as {
+    channelId: string,
+    videoId: string,
+    streamLengthSec: number,
+  };
 };
 
 const saveSuperChats = async (channelId: string, videoId: string, superChats: {[id:string]: SuperChat}) => {
