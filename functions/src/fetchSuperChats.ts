@@ -21,6 +21,8 @@ export const fetchSuperChats = async () => {
     tempChannels.push(channel);
   });
 
+  let counter = 0;
+
   for (const channel of tempChannels) {
     const streams = await channel.ref.collection("streams").get().catch((err) => {
       functions.logger.error(err.message + "\n" + err.stack);
@@ -46,11 +48,21 @@ export const fetchSuperChats = async () => {
           streamLengthSec: stream.get("streamLengthSec"),
         };
         topic.publish(Buffer.from(JSON.stringify(obj)));
+        counter += 1;
       }
+      if (counter >= 10) {
+        break;
+      }
+    }
+    if (counter >= 10) {
       break;
     }
   }
-  functions.logger.info("------ all update complated!!");
+  if (counter === 0) {
+    functions.logger.info("------ all update complated!!");
+  } else {
+    functions.logger.info(`------ published update chats: ${counter}`);
+  }
 };
 
 export const tempAnalyzeChat = async (message: Message) => {

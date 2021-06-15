@@ -4,7 +4,7 @@ import {publishCreatorsWatch} from "./publishCreatorsWatch";
 import {analyzeChats} from "./analyzeChats";
 import {updateArchives} from "./updateArchives";
 import {RuntimeOptions} from "firebase-functions";
-import {fetchSuperChats} from "./fetchSuperChats";
+import {fetchSuperChats, tempAnalyzeChat} from "./fetchSuperChats";
 
 admin.initializeApp();
 
@@ -26,5 +26,5 @@ export const PublishCreatorsWatchFunction = functions.runWith(weakRuntimeOpts).r
 export const UpdateArchivesFunction = functions.runWith(weakRuntimeOpts).region(REGION).pubsub.topic(WATCH_TOPIC).onPublish(updateArchives);
 export const AnalyzeChatsFunction = functions.runWith(strongRuntimeOpts).region(REGION).pubsub.topic(ANALYZE_TOPIC).onPublish(analyzeChats);
 export const FetchSuperChats = functions.runWith(weakRuntimeOpts).region(REGION).pubsub.schedule("every 5 minutes").onRun(fetchSuperChats);
-export const TempAnalyzeChatsFunction = functions.runWith(strongRuntimeOpts).region(REGION).pubsub.topic(TEMP_ANALYZE_TOPIC).onPublish(analyzeChats);
+export const TempAnalyzeChatsFunction = functions.runWith(strongRuntimeOpts).region(REGION).pubsub.topic(TEMP_ANALYZE_TOPIC).onPublish(tempAnalyzeChat);
 
