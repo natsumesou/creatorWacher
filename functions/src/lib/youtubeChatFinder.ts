@@ -12,6 +12,7 @@ export type SuperChat = {
   amount: number,
   unit: string,
   amountText: string,
+  thumbnail: string,
 };
 
 /**
@@ -308,17 +309,38 @@ const processChats = (chats: Array<any>, chatIds: Array<string|null>) => {
       if (action.addChatItemAction?.item?.liveChatPaidMessageRenderer) {
         const amountText = action.addChatItemAction.item.liveChatPaidMessageRenderer.purchaseAmountText.simpleText;
         const amountinfo = stringToAmount(rate, amountText);
-        superchats[action.addChatItemAction.item.liveChatPaidMessageRenderer.id] = {
+        const id = action.addChatItemAction.item.liveChatPaidMessageRenderer.id;
+        if (!superchats[id]) {
+          superchats[id] = {} as SuperChat;
+        }
+        const meta = {
           supporterChannelId: action.addChatItemAction.item.liveChatPaidMessageRenderer.authorExternalChannelId,
           supporterDisplayName: action.addChatItemAction.item.liveChatPaidMessageRenderer.authorName.simpleText,
           paidAt: new Date(parseInt(action.addChatItemAction.item.liveChatPaidMessageRenderer.timestampUsec.slice(0, -3))),
           amount: amountinfo.amount,
           unit: amountinfo.unit,
           amountText: amountText,
-        } as SuperChat;
+        };
+        superchats[id] = {...superchats[id], ...meta};
       }
       if (action.addLiveChatTickerItemAction?.item?.liveChatTickerPaidMessageItemRenderer) {
-        // スパチャの処理が上とかぶるのでこちらは無視
+        const id = action.addLiveChatTickerItemAction.item.liveChatTickerPaidMessageItemRenderer.id;
+        if (!superchats[id]) {
+          superchats[id] = {} as SuperChat;
+        }
+
+        let biggerIndex = 0;
+        let biggerWidth = 0;
+        action.addLiveChatTickerItemAction.item.liveChatTickerPaidMessageItemRenderer.authorPhoto.thumbnails.map((thumb: any, i: number) => {
+          if (thumb.width > biggerWidth) {
+            biggerWidth = thumb.width;
+            biggerIndex = i;
+          }
+        });
+        const meta = {
+          thumbnail: action.addLiveChatTickerItemAction.item.liveChatTickerPaidMessageItemRenderer.authorPhoto.thumbnails[biggerIndex].url,
+        };
+        superchats[id] = {...superchats[id], ...meta};
       }
       if (action.addChatItemAction?.item?.liveChatTextMessageRenderer) {
         const chatId = action.addChatItemAction.item.liveChatTextMessageRenderer.id;
