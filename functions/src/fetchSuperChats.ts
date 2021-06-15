@@ -40,7 +40,7 @@ export const fetchSuperChats = async () => {
 
     for (const stream of tempStreams) {
       const superChat = await stream.ref.collection("superChats").limit(1).get();
-      if (!stream.get("chatDisabled") || (superChat.size === 0 && stream.get("superChatCount") !== 0)) {
+      if (!stream.get("chatDisabled") && (superChat.size === 0 && stream.get("superChatCount") !== 0)) {
         const pubsub = new PubSub({projectId: process.env.GCP_PROJECT});
         const topic = await pubsub.topic(TEMP_ANALYZE_TOPIC);
         const obj = {
