@@ -4,6 +4,7 @@ import {findChatMessages, SuperChat} from "./lib/youtubeChatFinder";
 import {Message} from "firebase-functions/lib/providers/pubsub";
 import {TEMP_ANALYZE_TOPIC} from ".";
 import {PubSub} from "@google-cloud/pubsub";
+import {Bot} from "./lib/discordNotify";
 
 export const fetchSuperChats = async () => {
   const db = admin.firestore();
@@ -60,6 +61,12 @@ export const fetchSuperChats = async () => {
   }
   if (counter === 0) {
     functions.logger.info("------ all update complated!!");
+    const bot = new Bot(
+        functions.config().discord.hololive,
+        functions.config().discord.system,
+        functions.config().discord.activity,
+    );
+    await bot.alert("hololive superchat completed");
   } else {
     functions.logger.info(`------ published update chats: ${counter}`);
   }
