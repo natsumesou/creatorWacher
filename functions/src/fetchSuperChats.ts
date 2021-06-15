@@ -8,7 +8,7 @@ import {Bot} from "./lib/discordNotify";
 
 export const fetchSuperChats = async () => {
   const db = admin.firestore();
-  const channels = await db.collection("channels").where("category", "==", "hololive").get().catch((err) => {
+  const channels = await db.collection("channels").where("category", "==", "nijisanji").get().catch((err) => {
     functions.logger.error(err.message + "\n" + err.stack);
   });
 
