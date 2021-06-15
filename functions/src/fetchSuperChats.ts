@@ -67,6 +67,7 @@ export const fetchSuperChats = async () => {
 
 export const tempAnalyzeChat = async (message: Message) => {
   const metadata = messageToJSON(message);
+  functions.logger.info(`------ tempAnalyzeChat ${metadata.channelId}/streams/${metadata.videoId}`);
   const result = await findChatMessages(metadata.channelId, metadata.streamLengthSec);
   if (result.stream.chatAvailable) {
     await saveSuperChats(metadata.channelId, metadata.videoId, result.superChats);
