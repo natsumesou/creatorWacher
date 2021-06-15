@@ -7,7 +7,7 @@ export const fetchSuperChats = async () => {
     functions.logger.error(err.message + "\n" + err.stack);
   });
 
-  if (!channel || channel && channel.exists) {
+  if (!channel || channel && !channel.exists) {
     return;
   }
 
