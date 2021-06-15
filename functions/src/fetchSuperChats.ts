@@ -36,7 +36,7 @@ export const fetchSuperChats = async () => {
 
     for (const stream of tempStreams) {
       const superChat = await stream.ref.collection("superChats").limit(1).get();
-      if (superChat.size !== stream.get("superChatCount")) {
+      if (superChat.size === 0) {
         functions.logger.info(`update superchats: ${channel.id}/streams/${stream.id}`);
         const result = await findChatMessages(stream.id, stream.get("streamLengthSec"));
         if (result.stream.chatAvailable) {
