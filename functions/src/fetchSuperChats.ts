@@ -25,7 +25,8 @@ export const fetchSuperChats = async () => {
   });
 
   for (const stream of tempStreams) {
-    functions.logger.info(stream.get("title") + " : " + stream.id + " : " + stream.get("superChats"));
-    functions.logger.info(typeof stream.get("superChats"));
+    const superChat = await stream.ref.collection("superChats").limit(1).get();
+
+    functions.logger.info(stream.get("title") + " : " + stream.id + " : " + superChat.size);
   }
 };
