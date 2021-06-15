@@ -18,8 +18,6 @@ export const fetchSuperChats = async () => {
     tempChannels.push(channel);
   });
 
-  let update = false;
-
   for (const channel of tempChannels) {
     const streams = await channel.ref.collection("streams").get().catch((err) => {
       functions.logger.error(err.message + "\n" + err.stack);
@@ -41,18 +39,15 @@ export const fetchSuperChats = async () => {
         const result = await findChatMessages(stream.id, stream.get("streamLengthSec"));
         if (result.stream.chatAvailable) {
           await saveSuperChats(channel.id, stream.id, result.superChats);
-          functions.logger.info("------ updated");
-          update = true;
+          functions.logger.info(`------ updated ${channel.id}/streams/${stream.id}`);
+        } else {
+          functions.logger.info(`------ chat disabled..? ${channel.id}/streams/${stream.id}`);
         }
+        return;
       }
-      if (update) {
-        break;
-      }
-    }
-    if (update) {
-      break;
     }
   }
+  functions.logger.info("------ all update complated!!");
 };
 
 const saveSuperChats = async (channelId: string, videoId: string, superChats: {[id:string]: SuperChat}) => {
