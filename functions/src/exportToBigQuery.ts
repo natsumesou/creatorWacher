@@ -35,12 +35,7 @@ export const migrateStreamsToBigQuery = async (channel: DocumentSnapshot, snapsh
 
   if (changeType === ChangeType.CREATE) {
     const values = snapshots.map((snapshot) => buildStreamQueryValues(snapshot, channel));
-    const columns = [
-      "chatAvailable", "chatCount", "chatDisabled", "gameTitle", "publishedAt", "streamLengthSec", "subscribeCount", "superChatAmount", "title", "viewCount", "updatedAt", "createdAt", "superChatCount",
-    ];
-    const extraCol = ["id", "channelTitle", "category", "channelId", "documentId"];
-    const requireCol = columns.filter(((col) => snapshots[0].get(col) !== undefined));
-    const query = `INSERT \`${projectId}.${dataset}.${table}\` (${requireCol.concat(extraCol).join(",")}) VALUES ${values.join(",")}`;
+    const query = `INSERT \`${projectId}.${dataset}.${table}\` (chatAvailable, chatCount, chatDisabled, gameTitle, publishedAt, streamLengthSec, subscribeCount, superChatAmount, title, viewCount, updatedAt, createdAt, superChatCount, id, channelTitle, category, channelId, documentId) VALUES ${values.join(",")}`;
     functions.logger.log("CREATE stream: " + query);
     return await exec(bigQuery, query);
   }
@@ -55,7 +50,7 @@ export const migrateStreamsToBigQuery = async (channel: DocumentSnapshot, snapsh
 };
 
 const buildStreamQueryValues = (snapshot: DocumentSnapshot, channel: DocumentSnapshot) => {
-  return `(${snapshot.get("chatAvailable") ? `${snapshot.get("chatAvailable")},` : ""} ${snapshot.get("chatCount")}, ${snapshot.get("chatDisabled") ? `${snapshot.get("chatDisabled")},` : ""} ${snapshot.get("gameTitle") ? `"${snapshot.get("gameTitle").replace(/"/g, "\\\"")}"` : "NULL"}, ${snapshot.get("publishedAt") ? `TIMESTAMP("${snapshot.get("publishedAt").toDate().toISOString()}")` : "NULL"}, ${snapshot.get("streamLengthSec")}, ${snapshot.get("subscribeCount")}, ${snapshot.get("superChatAmount")}, ${snapshot.get("title") ? `"${snapshot.get("title").replace(/"/g, "\\\"")}"` : "NULL"}, ${snapshot.get("viewCount")}, ${snapshot.get("updatedAt") ? `TIMESTAMP("${snapshot.get("updatedAt").toDate().toISOString()}")` : "NULL"}, ${snapshot.get("createdAt") ? `TIMESTAMP("${snapshot.get("createdAt").toDate().toISOString()}"),`: "NULL"} ${snapshot.get("superChatCount")}, "${snapshot.id}", "${channel.get("title") ? channel.get("title").replace(/"/g, "\\\"") : "NULL"}", "${channel.get("category")}", "${channel.id}", "${snapshot.id}")`;
+  return `(${snapshot.get("chatAvailable") ? `${snapshot.get("chatAvailable")},` : "NULL"} ${snapshot.get("chatCount")}, ${snapshot.get("chatDisabled") ? `${snapshot.get("chatDisabled")},` : "NULL"} ${snapshot.get("gameTitle") ? `"${snapshot.get("gameTitle").replace(/"/g, "\\\"")}"` : "NULL"}, ${snapshot.get("publishedAt") ? `TIMESTAMP("${snapshot.get("publishedAt").toDate().toISOString()}")` : "NULL"}, ${snapshot.get("streamLengthSec")}, ${snapshot.get("subscribeCount")}, ${snapshot.get("superChatAmount")}, ${snapshot.get("title") ? `"${snapshot.get("title").replace(/"/g, "\\\"")}"` : "NULL"}, ${snapshot.get("viewCount")}, ${snapshot.get("updatedAt") ? `TIMESTAMP("${snapshot.get("updatedAt").toDate().toISOString()}")` : "NULL"}, ${snapshot.get("createdAt") ? `TIMESTAMP("${snapshot.get("createdAt").toDate().toISOString()}"),`: "NULL"} ${snapshot.get("superChatCount")}, "${snapshot.id}", "${channel.get("title") ? channel.get("title").replace(/"/g, "\\\"") : "NULL"}", "${channel.get("category")}", "${channel.id}", "${snapshot.id}")`;
 };
 
 export const exportSuperChatsToBigQuery = async (change: Change<DocumentSnapshot>, context: EventContext) => {
@@ -78,12 +73,7 @@ export const migrateSuperChatsToBigQuery = async (snapshots: DocumentSnapshot[],
 
   if (changeType === ChangeType.CREATE) {
     const values = snapshots.map((snapshot) => buildSuperChatQueryValues(snapshot, channelId));
-    const columns = [
-      "supporterChannelId", "supporterDisplayName", "amount", "amountText", "unit", "thumbnail", "paidAt",
-    ];
-    const extraCol = ["documentId", "channelId", "videoId"];
-    const requireCol = columns.filter((col) => snapshots[0].get(col) !== undefined);
-    const query = `INSERT \`${projectId}.${dataset}.${table}\` (${requireCol.concat(extraCol).join(",")}) VALUES ${values.join(",")}`;
+    const query = `INSERT \`${projectId}.${dataset}.${table}\` (videoId, supporterChannelId, supporterDisplayName, amount, amountText, unit, thumbnail, paidAt, documentId, channelId) VALUES ${values.join(",")}`;
     functions.logger.log("CREATE SuperChats: " + query);
     return await exec(bigQuery, query);
   }
@@ -98,7 +88,7 @@ export const migrateSuperChatsToBigQuery = async (snapshots: DocumentSnapshot[],
 };
 
 const buildSuperChatQueryValues = (snapshot: DocumentSnapshot, channelId: string) => {
-  return `("${snapshot.get("supporterChannelId")}", "${snapshot.get("supporterDisplayName").replace(/"/g, "\\\"")}", ${snapshot.get("amount")}, "${snapshot.get("amountText")}", "${snapshot.get("unit")}", ${snapshot.get("thumbnail") ? `"${snapshot.get("thumbnail")}"` : "NULL"}, TIMESTAMP("${snapshot.get("paidAt").toDate().toISOString()}"), "${snapshot.id}", "${channelId}", "${snapshot.ref.parent.id}")`;
+  return `("${snapshot.ref.parent.id}", "${snapshot.get("supporterChannelId")}", "${snapshot.get("supporterDisplayName").replace(/"/g, "\\\"")}", ${snapshot.get("amount")}, "${snapshot.get("amountText")}", "${snapshot.get("unit")}", ${snapshot.get("thumbnail") ? `"${snapshot.get("thumbnail")}"` : "NULL"}, TIMESTAMP("${snapshot.get("paidAt").toDate().toISOString()}"), "${snapshot.id}", "${channelId}")`;
 };
 
 const exec = async (bigQuery: BigQuery, query: string, retry = true) => {
