@@ -82,6 +82,9 @@ export const tempAnalyzeChat = async (message: Message) => {
     functions.logger.info(`------ updated ${metadata.channelId}/streams/${metadata.videoId}`);
   } else {
     functions.logger.info(`------ chat disabled..? ${metadata.channelId}/streams/${metadata.videoId}`);
+    const db = admin.firestore();
+    const doc = db.collection(`channels/${metadata.channelId}/streams`).doc(metadata.videoId);
+    await doc.update({chatDisabled: true});
   }
 };
 
