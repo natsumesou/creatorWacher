@@ -33,6 +33,7 @@ export const exportStreamsToBigQuery = async (change: Change<DocumentSnapshot>, 
     await migrateStreamsToBigQuery(channel, [change.after], changeType);
   } catch (err) {
     bot.alert(`${err.message}\n${err.stack}`);
+    throw err;
   }
 };
 
@@ -52,19 +53,18 @@ export const migrateStreamsToBigQuery = async (channel: DocumentSnapshot, snapsh
     if (changeType === ChangeType.CREATE) {
       const values = snapshots.map((snapshot) => buildStreamQueryValues(snapshot, channel));
       const query = `INSERT \`${projectId}.${dataset}.${table}\` (chatAvailable, chatCount, chatDisabled, gameTitle, publishedAt, streamLengthSec, subscribeCount, superChatAmount, title, viewCount, updatedAt, createdAt, superChatCount, id, channelTitle, category, channelId, documentId) VALUES ${values.join(",")}`;
-      functions.logger.log("CREATE stream: " + query);
       return await exec(bigQuery, query);
     }
 
     if (changeType === ChangeType.UPDATE) {
       for await (const snapshot of snapshots) {
         const query = `UPDATE \`${projectId}.${dataset}.${table}\` ${snapshot.get("chatAvailable") ? `SET chatAvailable = ${snapshot.get("chatAvailable")},` : ""} chatCount = ${snapshot.get("chatCount")}, ${snapshot.get("chatDisabled") ? `chatDisabled = ${snapshot.get("chatDisabled")},` : ""} ${snapshot.get("gameTitle") ? `gameTitle = "${snapshot.get("gameTitle").replace(/"/g, "\\\"")}",` : ""} ${snapshot.get("publishedAt") ? `publishedAt = TIMESTAMP("${snapshot.get("publishedAt").toDate().toISOString()}"),` : ""} streamLengthSec = ${snapshot.get("streamLengthSec")}, subscribeCount = ${snapshot.get("subscribeCount")}, superChatAmount = ${snapshot.get("superChatAmount")}, ${snapshot.get("title") ? `title = "${snapshot.get("title").replace(/"/g, "\\\"")}",` : ""} viewCount = ${snapshot.get("viewCount")}, ${snapshot.get("updatedAt") ? `updatedAt = TIMESTAMP("${snapshot.get("updatedAt").toDate().toISOString()}"),` : ""} ${snapshot.get("createdAt") ? `createdAt = TIMESTAMP("${snapshot.get("createdAt").toDate().toISOString()}"),` : ""} superChatCount = ${snapshot.get("superChatCount")}, id = "${snapshot.id}", channelTitle = ${channel.get("title") ? `"${channel.get("title").replace(/"/g, "\\\"")}",` : ""} category = "${channel.get("category")}", channelId = "${channel.id}", documentId = "${snapshot.id}" WHERE documentId = "${snapshot.id}"`;
-        functions.logger.log("UPDATE stream: " + query);
         return await exec(bigQuery, query);
       }
     }
   } catch (err) {
     bot.alert(`${err.message}\n${err.stack}`);
+    throw err;
   }
 };
 
@@ -82,6 +82,7 @@ export const exportSuperChatsToBigQuery = async (change: Change<DocumentSnapshot
     await migrateSuperChatsToBigQuery([change.after], channelId, videoId, changeType);
   } catch (err) {
     bot.alert(`${err.message}\n${err.stack}`);
+    throw err;
   }
 };
 
@@ -101,19 +102,18 @@ export const migrateSuperChatsToBigQuery = async (snapshots: DocumentSnapshot[],
     if (changeType === ChangeType.CREATE) {
       const values = snapshots.map((snapshot) => buildSuperChatQueryValues(snapshot, channelId, videoId));
       const query = `INSERT \`${projectId}.${dataset}.${table}\` (videoId, supporterChannelId, supporterDisplayName, amount, amountText, unit, thumbnail, paidAt, documentId, channelId) VALUES ${values.join(",")}`;
-      functions.logger.log("CREATE SuperChats: " + query);
       return await exec(bigQuery, query);
     }
 
     if (changeType === ChangeType.UPDATE) {
       for await (const snapshot of snapshots) {
         const query = `UPDATE \`${projectId}.${dataset}.${table}\` SET videoId = "${videoId}", supporterChannelId = "${snapshot.get("supporterChannelId")}", supporterDisplayName = "${snapshot.get("supporterDisplayName").replace(/"/g, "\\\"")}", amount = ${snapshot.get("amount")}, amountText = "${snapshot.get("amountText")}", unit = "${snapshot.get("unit")}", thumbnail = ${snapshot.get("thumbnail") ? `"${snapshot.get("thumbnail")}"` : "NULL"}, paidAt = TIMESTAMP("${snapshot.get("paidAt").toDate().toISOString()}"), documentId = "${snapshot.id}", channelId = "${channelId}" WHERE documentId = "${snapshot.id}"`;
-        functions.logger.log("UPDATE SuperChats: " + query);
         return await exec(bigQuery, query);
       }
     }
   } catch (err) {
     bot.alert(`${err.message}\n${err.stack}`);
+    throw err;
   }
 };
 
