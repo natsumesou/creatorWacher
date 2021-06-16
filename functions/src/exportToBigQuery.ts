@@ -83,41 +83,37 @@ export const exportSuperChatsToBigQuery = async (change: Change<DocumentSnapshot
 };
 
 export const migrateSuperChatsToBigQuery = async (snapshots: DocumentSnapshot[], channelId: string, videoId: string, changeType: ChangeType) => {
-  try {
-    const projectId = process.env.GCLOUD_PROJECT;
-    const bigQuery = new BigQuery({projectId: projectId});
-    const table = "superChats";
+  const projectId = process.env.GCLOUD_PROJECT;
+  const bigQuery = new BigQuery({projectId: projectId});
+  const table = "superChats";
 
-    if (changeType === ChangeType.DELETE) {
-      const values = snapshots.map((snapshot) => `"${snapshot.id}"` ).join(",");
-      const query = `DELETE \`${projectId}.${dataset}.${table}\` WHERE documentId in (${values})`;
-      return await exec(bigQuery, query).catch(errorHandler);
-    }
+  if (changeType === ChangeType.DELETE) {
+    const values = snapshots.map((snapshot) => `"${snapshot.id}"` ).join(",");
+    const query = `DELETE \`${projectId}.${dataset}.${table}\` WHERE documentId in (${values})`;
+    return await exec(bigQuery, query).catch(errorHandler);
+  }
 
-    if (changeType === ChangeType.CREATE) {
-      for await (const snapshot of snapshots) {
-        await bigQuery.dataset(dataset).table(table).insert({
-          videoId: videoId,
-          supporterChannelId: snapshot.get("supporterChannelId"),
-          supporterDisplayName: snapshot.get("supporterDisplayName"),
-          amount: snapshot.get("amount"),
-          amountText: snapshot.get("amountText"),
-          unit: snapshot.get("unit"),
-          thumbnail: snapshot.get("thumbnail") || null,
-          paidAt: bigQuery.timestamp(snapshot.get("paidAt").toDate().toISOString()),
-          documentId: snapshot.id,
-          channelId: channelId,
-        });
-      }
-    }
-
-    if (changeType === ChangeType.UPDATE) {
-      snapshots.map((snapshot) => {
-        throw new Error(`can not update superchat ${channelId}/streams/${videoId}/superChats/${snapshot.id}`);
+  if (changeType === ChangeType.CREATE) {
+    for await (const snapshot of snapshots) {
+      await bigQuery.dataset(dataset).table(table).insert({
+        videoId: videoId,
+        supporterChannelId: snapshot.get("supporterChannelId"),
+        supporterDisplayName: snapshot.get("supporterDisplayName"),
+        amount: snapshot.get("amount"),
+        amountText: snapshot.get("amountText"),
+        unit: snapshot.get("unit"),
+        thumbnail: snapshot.get("thumbnail") || null,
+        paidAt: bigQuery.timestamp(snapshot.get("paidAt").toDate().toISOString()),
+        documentId: snapshot.id,
+        channelId: channelId,
       });
     }
-  } catch (err) {
-    errorHandler(err);
+  }
+
+  if (changeType === ChangeType.UPDATE) {
+    snapshots.map((snapshot) => {
+      throw new Error(`can not update superchat ${channelId}/streams/${videoId}/superChats/${snapshot.id}`);
+    });
   }
 };
 
