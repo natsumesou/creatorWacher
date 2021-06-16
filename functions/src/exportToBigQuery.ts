@@ -107,20 +107,18 @@ export const migrateSuperChatsToBigQuery = async (snapshots: DocumentSnapshot[],
         channelId: channelId,
       };
     });
-    for await (const snapshot of snapshots) {
-      // SuperChatは基本書き込みのみで変更なし。DMLだとLate Limitに引っかかって書き込みがコケるのでStreaming writeする。
-      await bigQuery.dataset(dataset).table(table).insert(data).catch((err) => {
-        const bot = initializeBot();
-        const message = `superChat insert error: ${channelId}/streams/${videoId}/superChats/${snapshot.id} \n${err.message}\n${JSON.stringify(err.errors)})`;
-        bot.alert(message);
-        functions.logger.error(message);
-      });
-    }
+    // SuperChatは基本書き込みのみで変更なし。DMLだとLate Limitに引っかかって書き込みがコケるのでStreaming writeする。
+    await bigQuery.dataset(dataset).table(table).insert(data).catch((err) => {
+      const bot = initializeBot();
+      const message = `superChat insert error: ${channelId}/streams/${videoId}/superChats \n${err.message}\n${JSON.stringify(err.errors)})`;
+      bot.alert(message);
+      functions.logger.error(message);
+    });
   }
 
   if (changeType === ChangeType.UPDATE || changeType === ChangeType.DELETE) {
     snapshots.map((snapshot) => {
-      throw new Error(`can not ${changeType} superchat ${channelId}/streams/${videoId}/superChats/${snapshot.id}`);
+      throw new Error(`can not ${changeType} superchats ${channelId}/streams/${videoId}`);
     });
   }
 };
