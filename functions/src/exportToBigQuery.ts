@@ -11,6 +11,10 @@ export const ChangeType = {
 };
 type ChangeType = typeof ChangeType[keyof typeof ChangeType];
 
+const errorHandler = (err: Error) => {
+  functions.logger.error(`${err.message}\n${err.stack}`);
+};
+
 const dataset = "channels";
 
 const initializeBot = () => {
@@ -47,19 +51,19 @@ export const migrateStreamsToBigQuery = async (channel: DocumentSnapshot, snapsh
     if (changeType === ChangeType.DELETE) {
       const values = snapshots.map((snapshot) => `"${snapshot.id}"` ).join(",");
       const query = `DELETE \`${projectId}.${dataset}.${table}\` WHERE documentId in (${values})`;
-      return await exec(bigQuery, query);
+      return await exec(bigQuery, query).catch(errorHandler);
     }
 
     if (changeType === ChangeType.CREATE) {
       const values = snapshots.map((snapshot) => buildStreamQueryValues(snapshot, channel));
       const query = `INSERT \`${projectId}.${dataset}.${table}\` (chatAvailable, chatCount, chatDisabled, gameTitle, publishedAt, streamLengthSec, subscribeCount, superChatAmount, title, viewCount, updatedAt, createdAt, superChatCount, id, channelTitle, category, channelId, documentId) VALUES ${values.join(",")}`;
-      return await exec(bigQuery, query);
+      return await exec(bigQuery, query).catch(errorHandler);
     }
 
     if (changeType === ChangeType.UPDATE) {
       for await (const snapshot of snapshots) {
         const query = `UPDATE \`${projectId}.${dataset}.${table}\` ${(snapshot.get("chatAvailable") !== undefined) ? `SET chatAvailable = ${snapshot.get("chatAvailable")},` : ""} chatCount = ${snapshot.get("chatCount")}, ${(snapshot.get("chatDisabled") !== undefined) ? `chatDisabled = ${snapshot.get("chatDisabled")},` : ""} ${snapshot.get("gameTitle") ? `gameTitle = "${snapshot.get("gameTitle").replace(/"/g, "\\\"")}",` : ""} ${snapshot.get("publishedAt") ? `publishedAt = TIMESTAMP("${snapshot.get("publishedAt").toDate().toISOString()}"),` : ""} streamLengthSec = ${snapshot.get("streamLengthSec")}, subscribeCount = ${snapshot.get("subscribeCount")}, superChatAmount = ${snapshot.get("superChatAmount")}, ${snapshot.get("title") ? `title = "${snapshot.get("title").replace(/"/g, "\\\"")}",` : ""} viewCount = ${snapshot.get("viewCount")}, ${snapshot.get("updatedAt") ? `updatedAt = TIMESTAMP("${snapshot.get("updatedAt").toDate().toISOString()}"),` : ""} ${snapshot.get("createdAt") ? `createdAt = TIMESTAMP("${snapshot.get("createdAt").toDate().toISOString()}"),` : ""} superChatCount = ${snapshot.get("superChatCount")}, id = "${snapshot.id}", channelTitle = ${channel.get("title") ? `"${channel.get("title").replace(/"/g, "\\\"")}",` : ""} category = "${channel.get("category")}", channelId = "${channel.id}", documentId = "${snapshot.id}" WHERE documentId = "${snapshot.id}"`;
-        return await exec(bigQuery, query);
+        return await exec(bigQuery, query).catch(errorHandler);
       }
     }
   } catch (err) {
@@ -96,19 +100,19 @@ export const migrateSuperChatsToBigQuery = async (snapshots: DocumentSnapshot[],
     if (changeType === ChangeType.DELETE) {
       const values = snapshots.map((snapshot) => `"${snapshot.id}"` ).join(",");
       const query = `DELETE \`${projectId}.${dataset}.${table}\` WHERE documentId in (${values})`;
-      return await exec(bigQuery, query);
+      return await exec(bigQuery, query).catch(errorHandler);
     }
 
     if (changeType === ChangeType.CREATE) {
       const values = snapshots.map((snapshot) => buildSuperChatQueryValues(snapshot, channelId, videoId));
       const query = `INSERT \`${projectId}.${dataset}.${table}\` (videoId, supporterChannelId, supporterDisplayName, amount, amountText, unit, thumbnail, paidAt, documentId, channelId) VALUES ${values.join(",")}`;
-      return await exec(bigQuery, query);
+      return await exec(bigQuery, query).catch(errorHandler);
     }
 
     if (changeType === ChangeType.UPDATE) {
       for await (const snapshot of snapshots) {
         const query = `UPDATE \`${projectId}.${dataset}.${table}\` SET videoId = "${videoId}", supporterChannelId = "${snapshot.get("supporterChannelId")}", supporterDisplayName = "${snapshot.get("supporterDisplayName").replace(/"/g, "\\\"")}", amount = ${snapshot.get("amount")}, amountText = "${snapshot.get("amountText")}", unit = "${snapshot.get("unit")}", thumbnail = ${snapshot.get("thumbnail") ? `"${snapshot.get("thumbnail")}"` : "NULL"}, paidAt = TIMESTAMP("${snapshot.get("paidAt").toDate().toISOString()}"), documentId = "${snapshot.id}", channelId = "${channelId}" WHERE documentId = "${snapshot.id}"`;
-        return await exec(bigQuery, query);
+        return await exec(bigQuery, query).catch(errorHandler);
       }
     }
   } catch (err) {
@@ -133,7 +137,7 @@ const exec = async (bigQuery: BigQuery, query: string, retryCount = 0) => {
   } catch (e) {
     if (retryCount < MAX_RETRY && isRetryableInsertionError(e)) {
       await sleep(Math.exp(retryCount) * 10);
-      await exec(bigQuery, query, ++retryCount);
+      await exec(bigQuery, query, ++retryCount).catch(errorHandler);
     }
     throw e;
   }
