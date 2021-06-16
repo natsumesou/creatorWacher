@@ -128,7 +128,7 @@ const exec = async (bigQuery: BigQuery, query: string, retryCount = 0) => {
     if (retryCount < MAX_RETRY && isRetryableInsertionError(e)) {
       functions.logger.info(`RETRY: ${retryCount}`);
       await sleep(Math.exp(retryCount) * 10);
-      await exec(bigQuery, query, ++retryCount).catch(errorHandler);
+      await exec(bigQuery, query, ++retryCount);
     }
     functions.logger.info("MAX RETRY");
     throw e;
