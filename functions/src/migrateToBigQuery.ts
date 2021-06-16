@@ -39,5 +39,6 @@ export const migrateToBigQuery = async () => {
 
     functions.logger.info("migrate channel videos: " + tempStreams.length);
     await migrateStreamsToBigQuery(channel, tempStreams, ChangeType.CREATE);
+    break;
   }
 };
