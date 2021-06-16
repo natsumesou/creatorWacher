@@ -4,7 +4,7 @@ import {ChangeType, migrateStreamsToBigQuery, migrateSuperChatsToBigQuery} from 
 import {DocumentSnapshot} from "firebase-functions/lib/providers/firestore";
 
 export const migrateToBigQuery = async () => {
-  // await migrateStreams();
+  await migrateStreams();
   await migrateSuperChats();
 };
 
@@ -43,8 +43,8 @@ const migrateStreams = async () => {
     });
 
     functions.logger.info("migrate channel videos: " + tempStreams.length);
-    await migrateStreamsToBigQuery(channel, tempStreams, ChangeType.CREATE);
-    break;
+    await migrateStreamsToBigQuery(channel, tempStreams, ChangeType.UPDATE);
+    break; // check
   }
 };
 
@@ -92,7 +92,7 @@ const migrateSuperChats = async () => {
       }
 
       const tempSuperChats: DocumentSnapshot[] = [];
-      let sCount = 0;
+      let sCount = 0; // check
       superChats.forEach((sc) => {
         if (sCount < 3) {
           tempSuperChats.push(sc);
@@ -101,8 +101,8 @@ const migrateSuperChats = async () => {
       });
       functions.logger.info("migrate channel videos: " + tempStreams.length);
       await migrateSuperChatsToBigQuery(tempSuperChats, channel.id, ChangeType.CREATE);
-      break;
+      break; // check
     }
-    break;
+    break; // check
   }
 };
