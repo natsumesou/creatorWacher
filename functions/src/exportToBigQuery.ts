@@ -94,13 +94,14 @@ export const migrateSuperChatsToBigQuery = async (snapshots: DocumentSnapshot[],
 
   if (changeType === ChangeType.CREATE) {
     const data = snapshots.map((snapshot) => {
-      functions.logger.info("-------: " + snapshot.data());
+      functions.logger.info("1-------: " + JSON.stringify(snapshot.data()));
       return {
         videoId: videoId,
         documentId: snapshot.id,
         channelId: channelId,
       };
     });
+    functions.logger.info("2--------: " + JSON.stringify(data));
     for await (const snapshot of snapshots) {
       // SuperChatは基本書き込みのみで変更なし。DMLだとLate Limitに引っかかって書き込みがコケるのでStreaming writeする。
       await bigQuery.dataset(dataset).table(table).insert(data).catch((err) => {
