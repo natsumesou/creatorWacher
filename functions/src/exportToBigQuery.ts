@@ -1,3 +1,4 @@
+import * as functions from "firebase-functions";
 import {DocumentSnapshot} from "firebase-functions/lib/providers/firestore";
 import {Change, EventContext} from "firebase-functions";
 import {BigQuery} from "@google-cloud/bigquery";
@@ -41,7 +42,7 @@ export const migrateStreamsToBigQuery = async (channel: DocumentSnapshot, snapsh
 
   if (changeType === ChangeType.UPDATE) {
     for await (const snapshot of snapshots) {
-      const query = `UPDATE \`${projectId}.${dataset}.${table}\` SET chatAvailable = ${snapshot.get("chatAvailable")}, chatCount = ${snapshot.get("chatCount")}, chatDisabled = ${snapshot.get("chatDisabled")}, ${snapshot.get("gameTitle") ? `gameTitle = "${snapshot.get("gameTitle").replace(/"/g, "\\\"")}",` : ""} ${snapshot.get("publishedAt") ? `publishedAt = TIMESTAMP("${snapshot.get("publishedAt").toDate().toISOString()}"),` : ""} streamLengthSec = ${snapshot.get("streamLengthSec")}, subscribeCount = ${snapshot.get("subscribeCount")}, superChatAmount = ${snapshot.get("superChatAmount")}, ${snapshot.get("title") ? `title = "${snapshot.get("title").replace(/"/g, "\\\"")}",` : ""} viewCount = ${snapshot.get("viewCount")}, ${snapshot.get("updatedAt") ? `updatedAt = TIMESTAMP("${snapshot.get("updatedAt").toDate().toISOString()}"),` : ""} createdAt = TIMESTAMP("${snapshot.get("createdAt").toDate().toISOString()}"), superChatCount = ${snapshot.get("superChatCount")}, id = "${snapshot.id}", channelTitle = "${channel.get("title").replace(/"/g, "\\\"")}", category = "${channel.get("category")}", channelId = "${channel.id}", documentId = "${snapshot.id}" WHERE documentId = "${snapshot.id}"`;
+      const query = `UPDATE \`${projectId}.${dataset}.${table}\` SET chatAvailable = ${snapshot.get("chatAvailable")}, chatCount = ${snapshot.get("chatCount")}, chatDisabled = ${snapshot.get("chatDisabled")}, ${snapshot.get("gameTitle") ? `gameTitle = "${snapshot.get("gameTitle").replace(/"/g, "\\\"")}",` : ""} ${snapshot.get("publishedAt") ? `publishedAt = TIMESTAMP("${snapshot.get("publishedAt").toDate().toISOString()}"),` : ""} streamLengthSec = ${snapshot.get("streamLengthSec")}, subscribeCount = ${snapshot.get("subscribeCount")}, superChatAmount = ${snapshot.get("superChatAmount")}, ${snapshot.get("title") ? `title = "${snapshot.get("title").replace(/"/g, "\\\"")}",` : ""} viewCount = ${snapshot.get("viewCount")}, ${snapshot.get("updatedAt") ? `updatedAt = TIMESTAMP("${snapshot.get("updatedAt").toDate().toISOString()}"),` : ""} createdAt = TIMESTAMP("${snapshot.get("createdAt").toDate().toISOString()}"), superChatCount = ${snapshot.get("superChatCount")}, id = "${snapshot.id}", channelTitle = ${channel.get("category") ? `"${channel.get("title").replace(/"/g, "\\\"")}",` : ""} category = "${channel.get("category")}", channelId = "${channel.id}", documentId = "${snapshot.id}" WHERE documentId = "${snapshot.id}"`;
       console.log("UPDATE stream: " + query);
       return await exec(bigQuery, query);
     }
@@ -49,7 +50,7 @@ export const migrateStreamsToBigQuery = async (channel: DocumentSnapshot, snapsh
 };
 
 const buildStreamQueryValues = (snapshot: DocumentSnapshot, channel: DocumentSnapshot) => {
-  return `(${snapshot.get("chatAvailable")}, ${snapshot.get("chatCount")}, ${snapshot.get("chatDisabled")}, ${snapshot.get("gameTitle") ? `"${snapshot.get("gameTitle").replace(/"/g, "\\\"")}"` : "NULL"}, ${snapshot.get("publishedAt") ? `TIMESTAMP("${snapshot.get("publishedAt").toDate().toISOString()}")` : "NULL"}, ${snapshot.get("streamLengthSec")}, ${snapshot.get("subscribeCount")}, ${snapshot.get("superChatAmount")}, ${snapshot.get("title") ? `"${snapshot.get("title").replace(/"/g, "\\\"")}"` : "NULL"}, ${snapshot.get("viewCount")}, ${snapshot.get("updatedAt") ? `TIMESTAMP("${snapshot.get("updatedAt").toDate().toISOString()}")` : "NULL"}, TIMESTAMP("${snapshot.get("createdAt").toDate().toISOString()}"), ${snapshot.get("superChatCount")}, "${snapshot.id}", "${channel.get("title").replace(/"/g, "\\\"")}", "${channel.get("category")}", "${channel.id}", "${snapshot.id}")`;
+  return `(${snapshot.get("chatAvailable")}, ${snapshot.get("chatCount")}, ${snapshot.get("chatDisabled")}, ${snapshot.get("gameTitle") ? `"${snapshot.get("gameTitle").replace(/"/g, "\\\"")}"` : "NULL"}, ${snapshot.get("publishedAt") ? `TIMESTAMP("${snapshot.get("publishedAt").toDate().toISOString()}")` : "NULL"}, ${snapshot.get("streamLengthSec")}, ${snapshot.get("subscribeCount")}, ${snapshot.get("superChatAmount")}, ${snapshot.get("title") ? `"${snapshot.get("title").replace(/"/g, "\\\"")}"` : "NULL"}, ${snapshot.get("viewCount")}, ${snapshot.get("updatedAt") ? `TIMESTAMP("${snapshot.get("updatedAt").toDate().toISOString()}")` : "NULL"}, TIMESTAMP("${snapshot.get("createdAt").toDate().toISOString()}"), ${snapshot.get("superChatCount")}, "${snapshot.id}", "${channel.get("title") ? channel.get("title").replace(/"/g, "\\\"") : "NULL"}", "${channel.get("category")}", "${channel.id}", "${snapshot.id}")`;
 };
 
 export const exportSuperChatsToBigQuery = async (change: Change<DocumentSnapshot>, context: EventContext) => {
@@ -100,7 +101,7 @@ const exec = async (bigQuery: BigQuery, query: string) => {
     await job.getQueryResults();
   } catch (err) {
     if (err.code === 400) {
-      console.error(`documentId: クエリの実行に失敗しました。\n${query}\n${err.message}`);
+      functions.logger.error(`documentId: クエリの実行に失敗しました。\n${query}\n${err.message}`);
     } else {
       throw err;
     }
