@@ -116,7 +116,7 @@ const buildSuperChatQueryValues = (snapshot: DocumentSnapshot, channelId: string
 };
 
 const exec = async (bigQuery: BigQuery, query: string, retryCount = 0) => {
-  const MAX_RETRY = 6;
+  const MAX_RETRY = 7;
   const options = {
     query: query,
     location: "asia-northeast1",
@@ -125,59 +125,18 @@ const exec = async (bigQuery: BigQuery, query: string, retryCount = 0) => {
     const [job] = await bigQuery.createQueryJob(options);
     await job.getQueryResults();
   } catch (e) {
-    if (retryCount < MAX_RETRY && isRetryableInsertionError(e)) {
+    if (retryCount < MAX_RETRY && e.status.errorResult.reason === "rateLimitExceeded") {
       functions.logger.info(`RETRY: ${retryCount}`);
       await sleep(Math.exp(retryCount) * 10);
       await exec(bigQuery, query, ++retryCount);
     }
+    functions.logger.error("ERROR QUERY: " + e.configuration?.query?.query);
     functions.logger.info("MAX RETRY");
     throw e;
   }
 };
 
 const sleep = (msec: number) => new Promise((resolve) => setTimeout(resolve, msec));
-
-const isRetryableInsertionError = (e: any) => {
-  let isRetryable = true;
-  const expectedErrors = [
-    {
-      message: "no such field.",
-      location: "document_id",
-    },
-  ];
-
-  functions.logger.info("1---------------------");
-  functions.logger.info(e.response);
-  functions.logger.info(e.response?.insertErrors);
-  functions.logger.info(e.response?.insertErrors?.errors);
-  functions.logger.info("2---------------------");
-
-  if (
-    e.response &&
-    e.response.insertErrors &&
-    e.response.insertErrors.errors
-  ) {
-    const errors = e.response.insertErrors.errors;
-    errors.forEach((error: any) => {
-      let isExpected = false;
-      expectedErrors.forEach((expectedError) => {
-        functions.logger.info("3---------------------");
-        functions.logger.info(error.message);
-        functions.logger.info(error.location);
-        if (
-          error.message === expectedError.message &&
-          error.location === expectedError.location
-        ) {
-          isExpected = true;
-        }
-      });
-      if (!isExpected) {
-        isRetryable = false;
-      }
-    });
-  }
-  return isRetryable;
-};
 
 const getChangeType = (change: Change<DocumentSnapshot>) => {
   if (!change.after.exists) {
