@@ -34,16 +34,12 @@ const migrateStreams = async () => {
     }
 
     const tempStreams: DocumentSnapshot[] = [];
-    let count = 0;
     streams.forEach((stream) => {
-      if (count < 3) {
-        tempStreams.push(stream);
-        count += 1;
-      }
+      tempStreams.push(stream);
     });
 
     functions.logger.info("migrate channel videos: " + tempStreams.length);
-    await migrateStreamsToBigQuery(channel, tempStreams, ChangeType.UPDATE);
+    await migrateStreamsToBigQuery(channel, tempStreams, ChangeType.CREATE);
     break; // check
   }
 };
@@ -100,7 +96,7 @@ const migrateSuperChats = async () => {
         }
       });
       functions.logger.info("migrate channel videos: " + tempStreams.length);
-      await migrateSuperChatsToBigQuery(tempSuperChats, channel.id, ChangeType.CREATE);
+      await migrateSuperChatsToBigQuery(tempSuperChats, channel.id, stream.id, ChangeType.CREATE);
       break; // check
     }
     break; // check
