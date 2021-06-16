@@ -70,12 +70,8 @@ const migrateSuperChats = async () => {
     }
 
     const tempStreams: DocumentSnapshot[] = [];
-    let count = 0;
     streams.forEach((stream) => {
-      if (count < 1) {
-        tempStreams.push(stream);
-        count += 1;
-      }
+      tempStreams.push(stream);
     });
 
     for await (const stream of tempStreams) {

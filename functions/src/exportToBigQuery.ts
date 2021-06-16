@@ -12,13 +12,17 @@ export const ChangeType = {
 type ChangeType = typeof ChangeType[keyof typeof ChangeType];
 
 const errorHandler = (err: Error) => {
-  const bot = new Bot(
+  const bot = initializeBot();
+  bot.alert(`${err.message}\n${err.stack}`);
+  throw err;
+};
+
+const initializeBot = () => {
+  return new Bot(
       functions.config().discord.hololive,
       functions.config().discord.system,
       functions.config().discord.activity,
   );
-  bot.alert(`${err.message}\n${err.stack}`);
-  throw err;
 };
 
 const dataset = "channels";
@@ -50,6 +54,7 @@ export const migrateStreamsToBigQuery = async (channel: DocumentSnapshot, snapsh
     }
 
     if (changeType === ChangeType.CREATE) {
+      // VideoはすぐにUPDATEが必要な上に書き込み数が少ないのでDMLで処理する
       const values = snapshots.map((snapshot) => buildStreamQueryValues(snapshot, channel));
       const query = `INSERT \`${projectId}.${dataset}.${table}\` (chatAvailable, chatCount, chatDisabled, gameTitle, publishedAt, streamLengthSec, subscribeCount, superChatAmount, title, viewCount, updatedAt, createdAt, superChatCount, id, channelTitle, category, channelId, documentId) VALUES ${values.join(",")}`;
       return await exec(bigQuery, query).catch(errorHandler);
@@ -89,6 +94,7 @@ export const migrateSuperChatsToBigQuery = async (snapshots: DocumentSnapshot[],
 
   if (changeType === ChangeType.CREATE) {
     for await (const snapshot of snapshots) {
+      // SuperChatは基本書き込みのみで変更なし。DMLだとLate Limitに引っかかって書き込みがコケるのでStreaming writeする。
       await bigQuery.dataset(dataset).table(table).insert({
         videoId: videoId,
         supporterChannelId: snapshot.get("supporterChannelId"),
@@ -101,8 +107,10 @@ export const migrateSuperChatsToBigQuery = async (snapshots: DocumentSnapshot[],
         documentId: snapshot.id,
         channelId: channelId,
       }).catch((err) => {
-        const e = new Error(`ERROR: ${channelId}/streams/${videoId}/superChats/${snapshot.id} \n${err.message}\n${err.stack}`);
-        errorHandler(e);
+        const bot = initializeBot();
+        const message = `superChat insert error: ${channelId}/streams/${videoId}/superChats/${snapshot.id} \n${err.message}\n${err.stack})`;
+        bot.alert(message);
+        functions.logger.error(message);
       });
     }
   }
