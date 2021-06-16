@@ -44,7 +44,7 @@ export const migrateStreams = async () => {
 export const triggerSuperChats = async () => {
   const pubsub = new PubSub({projectId: process.env.GCP_PROJECT});
   const topic = await pubsub.topic(TEMP_ANALYZE_TOPIC);
-  await topic.publish(Buffer.from(JSON.stringify({channelId: "UCS9uQI-jC3DE0L4IpXyvr6w", videoId: "S1Kx7Hc018c"})));
+  await topic.publish(Buffer.from(JSON.stringify({channelId: "UC6wvdADTJ88OfIbJYIpAaDA", videoId: "zWtdaG1hAew"})));
 };
 
 export const migrateSuperChats = async (message: Message) => {
