@@ -14,7 +14,7 @@ type ChangeType = typeof ChangeType[keyof typeof ChangeType];
 const errorHandler = (err: Error) => {
   const bot = initializeBot();
   bot.alert(`${err.message}\n${err.stack}`);
-  throw err;
+  functions.logger.error(`${err.message}\n${err.stack}`);
 };
 
 const initializeBot = () => {
@@ -110,10 +110,8 @@ export const migrateSuperChatsToBigQuery = async (snapshots: DocumentSnapshot[],
     for await (const snapshot of snapshots) {
       // SuperChatは基本書き込みのみで変更なし。DMLだとLate Limitに引っかかって書き込みがコケるのでStreaming writeする。
       await bigQuery.dataset(dataset).table(table).insert(data).catch((err) => {
-        const bot = initializeBot();
-        const message = `superChat insert error: ${channelId}/streams/${videoId}/superChats/${snapshot.id} \n${err.message}\n${err.stack})`;
-        bot.alert(message);
-        functions.logger.error(message);
+        const error = new Error(`superChat insert error: ${channelId}/streams/${videoId}/superChats/${snapshot.id} \n${err.message}\n${err.stack})`);
+        errorHandler(error);
       });
     }
   }
