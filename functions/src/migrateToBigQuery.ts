@@ -10,7 +10,7 @@ export const migrateToBigQuery = async () => {
 
 const migrateStreams = async () => {
   const db = admin.firestore();
-  const channels = await db.collection("channels").where("category", "==", "hololive").get().catch((err) => {
+  const channels = await db.collection("channels").get().catch((err) => {
     functions.logger.error(err.message + "\n" + err.stack);
   });
 
@@ -46,7 +46,7 @@ const migrateStreams = async () => {
 
 const migrateSuperChats = async () => {
   const db = admin.firestore();
-  const channels = await db.collection("channels").where("category", "==", "hololive").get().catch((err) => {
+  const channels = await db.collection("channels").where("category", "in", ["hololive"]).get().catch((err) => {
     functions.logger.error(err.message + "\n" + err.stack);
   });
 

@@ -93,9 +93,8 @@ export const migrateSuperChatsToBigQuery = async (snapshots: DocumentSnapshot[],
   const table = "superChats";
 
   if (changeType === ChangeType.CREATE) {
-    for await (const snapshot of snapshots) {
-      // SuperChatは基本書き込みのみで変更なし。DMLだとLate Limitに引っかかって書き込みがコケるのでStreaming writeする。
-      await bigQuery.dataset(dataset).table(table).insert({
+    const data = snapshots.map((snapshot) => {
+      return {
         videoId: videoId,
         supporterChannelId: snapshot.get("supporterChannelId"),
         supporterDisplayName: snapshot.get("supporterDisplayName"),
@@ -106,7 +105,11 @@ export const migrateSuperChatsToBigQuery = async (snapshots: DocumentSnapshot[],
         paidAt: bigQuery.timestamp(snapshot.get("paidAt").toDate().toISOString()),
         documentId: snapshot.id,
         channelId: channelId,
-      }).catch((err) => {
+      };
+    });
+    for await (const snapshot of snapshots) {
+      // SuperChatは基本書き込みのみで変更なし。DMLだとLate Limitに引っかかって書き込みがコケるのでStreaming writeする。
+      await bigQuery.dataset(dataset).table(table).insert(data).catch((err) => {
         const bot = initializeBot();
         const message = `superChat insert error: ${channelId}/streams/${videoId}/superChats/${snapshot.id} \n${err.message}\n${err.stack})`;
         bot.alert(message);
