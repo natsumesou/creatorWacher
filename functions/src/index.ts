@@ -5,7 +5,7 @@ import {analyzeChats} from "./analyzeChats";
 import {updateArchives} from "./updateArchives";
 import {RuntimeOptions} from "firebase-functions";
 import {exportStreamsToBigQuery, exportSuperChatsToBigQuery} from "./exportToBigQuery";
-import {migrateStreams, migrateSuperChats, triggerSuperChats} from "./migrateToBigQuery";
+import {migrateSuperChats, triggerSuperChats} from "./migrateToBigQuery";
 
 admin.initializeApp();
 
@@ -29,6 +29,6 @@ export const AnalyzeChatsFunction = functions.runWith(strongRuntimeOpts).region(
 export const ExportStreamsToBigQuery = functions.runWith(weakRuntimeOpts).region(REGION).firestore.document("channels/{channelId}/streams/{videoId}").onWrite(exportStreamsToBigQuery);
 export const ExportSuperChatsToBigQuery = functions.runWith(weakRuntimeOpts).region(REGION).firestore.document("channels/{channelId}/streams/{videoId}/superChats/{superChatId}").onWrite(exportSuperChatsToBigQuery);
 
-export const MigrateStreams = functions.runWith(strongRuntimeOpts).region(REGION).pubsub.schedule("every 10 minutes").onRun(migrateStreams);
-export const TriggerSuperChats = functions.runWith(weakRuntimeOpts).region(REGION).pubsub.schedule("every 10 minutes").onRun(triggerSuperChats);
+// export const MigrateStreams = functions.runWith(strongRuntimeOpts).region(REGION).pubsub.schedule("every 10 minutes").onRun(migrateStreams);
+export const TriggerSuperChats = functions.runWith(strongRuntimeOpts).region(REGION).pubsub.schedule("every 10 minutes").onRun(triggerSuperChats);
 export const MigrateSuperChats = functions.runWith(strongRuntimeOpts).region(REGION).pubsub.topic(TEMP_ANALYZE_TOPIC).onPublish(migrateSuperChats);

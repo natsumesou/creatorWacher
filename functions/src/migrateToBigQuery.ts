@@ -43,7 +43,7 @@ export const migrateStreams = async () => {
 
 export const triggerSuperChats = async () => {
   const db = admin.firestore();
-  const channels = await db.collection("channels").where("category", "in", ["hololive", "nijisanji"]).get().catch((err) => {
+  const channels = await db.collection("channels").where("category", "in", ["hololive", "nijisanji"]).where("videoId", "==", "S1Kx7Hc018c").get().catch((err) => {
     functions.logger.error(err.message + "\n" + err.stack);
   });
 
