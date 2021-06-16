@@ -12,21 +12,18 @@ export const ChangeType = {
 type ChangeType = typeof ChangeType[keyof typeof ChangeType];
 
 const errorHandler = (err: Error) => {
-  functions.logger.error(`${err.message}\n${err.stack}`);
-};
-
-const dataset = "channels";
-
-const initializeBot = () => {
-  return new Bot(
+  const bot = new Bot(
       functions.config().discord.hololive,
       functions.config().discord.system,
       functions.config().discord.activity,
   );
+  functions.logger.error(`${err.message}\n${err.stack}`);
+  bot.alert(`${err.message}\n${err.stack}`);
 };
 
+const dataset = "channels";
+
 export const exportStreamsToBigQuery = async (change: Change<DocumentSnapshot>, context: EventContext) => {
-  const bot = initializeBot();
   try {
     const channel = await change.after.ref.parent.parent?.get();
     if (!channel || !channel.exists) {
@@ -36,13 +33,11 @@ export const exportStreamsToBigQuery = async (change: Change<DocumentSnapshot>, 
     const changeType = getChangeType(change);
     await migrateStreamsToBigQuery(channel, [change.after], changeType);
   } catch (err) {
-    bot.alert(`${err.message}\n${err.stack}`);
-    throw err;
+    errorHandler(err);
   }
 };
 
 export const migrateStreamsToBigQuery = async (channel: DocumentSnapshot, snapshots: DocumentSnapshot[], changeType: ChangeType) => {
-  const bot = initializeBot();
   try {
     const projectId = process.env.GCLOUD_PROJECT;
     const bigQuery = new BigQuery({projectId: projectId});
@@ -67,8 +62,7 @@ export const migrateStreamsToBigQuery = async (channel: DocumentSnapshot, snapsh
       }
     }
   } catch (err) {
-    bot.alert(`${err.message}\n${err.stack}`);
-    throw err;
+    errorHandler(err);
   }
 };
 
@@ -77,7 +71,6 @@ const buildStreamQueryValues = (snapshot: DocumentSnapshot, channel: DocumentSna
 };
 
 export const exportSuperChatsToBigQuery = async (change: Change<DocumentSnapshot>, context: EventContext) => {
-  const bot = initializeBot();
   try {
     const changeType = getChangeType(change);
     const channelId = context.params.channelId;
@@ -85,13 +78,11 @@ export const exportSuperChatsToBigQuery = async (change: Change<DocumentSnapshot
 
     await migrateSuperChatsToBigQuery([change.after], channelId, videoId, changeType);
   } catch (err) {
-    bot.alert(`${err.message}\n${err.stack}`);
-    throw err;
+    errorHandler(err);
   }
 };
 
 export const migrateSuperChatsToBigQuery = async (snapshots: DocumentSnapshot[], channelId: string, videoId: string, changeType: ChangeType) => {
-  const bot = initializeBot();
   try {
     const projectId = process.env.GCLOUD_PROJECT;
     const bigQuery = new BigQuery({projectId: projectId});
@@ -116,8 +107,7 @@ export const migrateSuperChatsToBigQuery = async (snapshots: DocumentSnapshot[],
       }
     }
   } catch (err) {
-    bot.alert(`${err.message}\n${err.stack}`);
-    throw err;
+    errorHandler(err);
   }
 };
 
@@ -136,9 +126,11 @@ const exec = async (bigQuery: BigQuery, query: string, retryCount = 0) => {
     await job.getQueryResults();
   } catch (e) {
     if (retryCount < MAX_RETRY && isRetryableInsertionError(e)) {
+      functions.logger.info(`RETRY: ${retryCount}`);
       await sleep(Math.exp(retryCount) * 10);
       await exec(bigQuery, query, ++retryCount).catch(errorHandler);
     }
+    functions.logger.info("MAX RETRY");
     throw e;
   }
 };
