@@ -17,8 +17,8 @@ const errorHandler = (err: Error) => {
       functions.config().discord.system,
       functions.config().discord.activity,
   );
-  functions.logger.error(`${err.message}\n${err.stack}`);
   bot.alert(`${err.message}\n${err.stack}`);
+  throw err;
 };
 
 const dataset = "channels";
@@ -103,8 +103,8 @@ export const migrateSuperChatsToBigQuery = async (snapshots: DocumentSnapshot[],
           amount: snapshot.get("amount"),
           amountText: snapshot.get("amountText"),
           unit: snapshot.get("unit"),
-          thumbnail: snapshot.get("thumbnail"),
-          paidAt: snapshot.get("paidAt"),
+          thumbnail: snapshot.get("thumbnail") || null,
+          paidAt: bigQuery.timestamp(snapshot.get("paidAt").toDate().toISOString()),
           documentId: snapshot.id,
           channelId: channelId,
         });
