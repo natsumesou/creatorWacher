@@ -106,6 +106,8 @@ export const migrateSuperChatsToBigQuery = async (snapshots: DocumentSnapshot[],
         paidAt: bigQuery.timestamp(snapshot.get("paidAt").toDate().toISOString()),
         documentId: snapshot.id,
         channelId: channelId,
+      }).catch((err) => {
+        functions.logger.error(`ERROR: ${channelId}/streams/${videoId}/superChats/${snapshot.id} \n${err.message}\n${err.stack}`);
       });
     }
   }
