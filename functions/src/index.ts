@@ -28,4 +28,5 @@ export const UpdateArchivesFunction = functions.runWith(weakRuntimeOpts).region(
 export const AnalyzeChatsFunction = functions.runWith(strongRuntimeOpts).region(REGION).pubsub.topic(ANALYZE_TOPIC).onPublish(analyzeChats);
 export const ExportStreamsToBigQuery = functions.runWith(weakRuntimeOpts).region(REGION).firestore.document("channels/{channelId}/streams/{videoId}").onWrite(exportStreamsToBigQuery);
 export const ExportSuperChatsToBigQuery = functions.runWith(weakRuntimeOpts).region(REGION).firestore.document("channels/{channelId}/streams/{videoId}/superChats/{superChatId}").onWrite(exportSuperChatsToBigQuery);
-export const MigrateToBigQuery = functions.runWith(strongRuntimeOpts).region(REGION).pubsub.schedule("every 10 minutes").onRun(migrateToBigQuery);
+
+export const MigrateToBigQuery = functions.runWith(weakRuntimeOpts).region(REGION).pubsub.schedule("every 5 minutes").onRun(migrateToBigQuery);
