@@ -95,24 +95,30 @@ export const migrateSuperChatsToBigQuery = async (snapshots: DocumentSnapshot[],
     }
 
     if (changeType === ChangeType.CREATE) {
-      const values = snapshots.map((snapshot) => buildSuperChatQueryValues(snapshot, channelId, videoId));
-      const query = `INSERT \`${projectId}.${dataset}.${table}\` (videoId, supporterChannelId, supporterDisplayName, amount, amountText, unit, thumbnail, paidAt, documentId, channelId) VALUES ${values.join(",")}`;
-      return await exec(bigQuery, query).catch(errorHandler);
+      for await (const snapshot of snapshots) {
+        await bigQuery.dataset(dataset).table(table).insert({
+          videoId: videoId,
+          supporterChannelId: snapshot.get("supporterChannelId"),
+          supporterDisplayName: snapshot.get("supporterDisplayName"),
+          amount: snapshot.get("amount"),
+          amountText: snapshot.get("amountText"),
+          unit: snapshot.get("unit"),
+          thumbnail: snapshot.get("thumbnail"),
+          paidAt: snapshot.get("paidAt"),
+          documentId: snapshot.id,
+          channelId: channelId,
+        });
+      }
     }
 
     if (changeType === ChangeType.UPDATE) {
-      for await (const snapshot of snapshots) {
-        const query = `UPDATE \`${projectId}.${dataset}.${table}\` SET videoId = "${videoId}", supporterChannelId = "${snapshot.get("supporterChannelId")}", supporterDisplayName = "${snapshot.get("supporterDisplayName").replace(/"/g, "\\\"")}", amount = ${snapshot.get("amount")}, amountText = "${snapshot.get("amountText")}", unit = "${snapshot.get("unit")}", thumbnail = ${snapshot.get("thumbnail") ? `"${snapshot.get("thumbnail")}"` : "NULL"}, paidAt = TIMESTAMP("${snapshot.get("paidAt").toDate().toISOString()}"), documentId = "${snapshot.id}", channelId = "${channelId}" WHERE documentId = "${snapshot.id}"`;
-        return await exec(bigQuery, query).catch(errorHandler);
-      }
+      snapshots.map((snapshot) => {
+        throw new Error(`can not update superchat ${channelId}/streams/${videoId}/superChats/${snapshot.id}`);
+      });
     }
   } catch (err) {
     errorHandler(err);
   }
-};
-
-const buildSuperChatQueryValues = (snapshot: DocumentSnapshot, channelId: string, videoId: string) => {
-  return `("${videoId}", "${snapshot.get("supporterChannelId")}", "${snapshot.get("supporterDisplayName").replace(/"/g, "\\\"")}", ${snapshot.get("amount")}, "${snapshot.get("amountText")}", "${snapshot.get("unit")}", ${snapshot.get("thumbnail") ? `"${snapshot.get("thumbnail")}"` : "NULL"}, TIMESTAMP("${snapshot.get("paidAt").toDate().toISOString()}"), "${snapshot.id}", "${channelId}")`;
 };
 
 const exec = async (bigQuery: BigQuery, query: string, retryCount = 0) => {
@@ -125,13 +131,10 @@ const exec = async (bigQuery: BigQuery, query: string, retryCount = 0) => {
     const [job] = await bigQuery.createQueryJob(options);
     await job.getQueryResults();
   } catch (e) {
-    if (retryCount < MAX_RETRY && e.status.errorResult.reason === "rateLimitExceeded") {
-      functions.logger.info(`RETRY: ${retryCount}`);
+    if (retryCount < MAX_RETRY) {
       await sleep(Math.exp(retryCount) * 10);
       await exec(bigQuery, query, ++retryCount);
     }
-    functions.logger.error("ERROR QUERY: " + e.configuration?.query?.query);
-    functions.logger.info("MAX RETRY");
     throw e;
   }
 };
