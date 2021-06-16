@@ -97,6 +97,12 @@ export const migrateSuperChatsToBigQuery = async (snapshots: DocumentSnapshot[],
       return {
         videoId: videoId,
         supporterChannelId: snapshot.get("supporterChannelId"),
+        supporterDisplayName: snapshot.get("supporterDisplayName"),
+        amount: snapshot.get("amount"),
+        amountText: snapshot.get("amountText"),
+        unit: snapshot.get("unit"),
+        thumbnail: snapshot.get("thumbnail") || null,
+        paidAt: bigQuery.timestamp(snapshot.get("paidAt").toDate().toISOString()),
         documentId: snapshot.id,
         channelId: channelId,
       };
