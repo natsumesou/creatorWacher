@@ -5,7 +5,7 @@ import {analyzeChats} from "./analyzeChats";
 import {updateArchives} from "./updateArchives";
 import {RuntimeOptions} from "firebase-functions";
 import {exportStreamsToBigQuery, exportSuperChatsToBigQuery} from "./exportToBigQuery";
-// import {migrateToBigQuery} from "./migrateToBigQuery";
+import {migrateToBigQuery} from "./migrateToBigQuery";
 
 admin.initializeApp();
 
@@ -28,4 +28,4 @@ export const UpdateArchivesFunction = functions.runWith(weakRuntimeOpts).region(
 export const AnalyzeChatsFunction = functions.runWith(strongRuntimeOpts).region(REGION).pubsub.topic(ANALYZE_TOPIC).onPublish(analyzeChats);
 export const ExportStreamsToBigQuery = functions.runWith(weakRuntimeOpts).region(REGION).firestore.document("channels/{channelId}/streams/{videoId}").onWrite(exportStreamsToBigQuery);
 export const ExportSuperChatsToBigQuery = functions.runWith(weakRuntimeOpts).region(REGION).firestore.document("channels/{channelId}/streams/{videoId}/superChats/{superChatId}").onWrite(exportSuperChatsToBigQuery);
-// export const MigrateToBigQuery = functions.runWith(strongRuntimeOpts).region(REGION).pubsub.schedule("every 10 minutes").onRun(migrateToBigQuery);
+export const MigrateToBigQuery = functions.runWith(strongRuntimeOpts).region(REGION).pubsub.schedule("every 10 minutes").onRun(migrateToBigQuery);
