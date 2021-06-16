@@ -47,9 +47,13 @@ const migrateSuperChats = async () => {
         continue;
       }
 
+      let c = 0;
       const tempSuperChats: DocumentSnapshot[] = [];
       superChats.forEach((sc) => {
-        tempSuperChats.push(sc);
+        if (c < 3) {
+          tempSuperChats.push(sc);
+          c += 1;
+        }
       });
       functions.logger.info("migrate video /" + channel.id + "/streams/" + stream.id + " sc: " + tempStreams.length);
       await migrateSuperChatsToBigQuery(tempSuperChats, channel.id, stream.id, ChangeType.CREATE);
