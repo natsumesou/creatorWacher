@@ -145,6 +145,13 @@ const isRetryableInsertionError = (e: any) => {
       location: "document_id",
     },
   ];
+
+  functions.logger.info("1---------------------");
+  functions.logger.info(e.response);
+  functions.logger.info(e.response?.insertErrors);
+  functions.logger.info(e.response?.insertErrors?.errors);
+  functions.logger.info("2---------------------");
+
   if (
     e.response &&
     e.response.insertErrors &&
@@ -154,6 +161,9 @@ const isRetryableInsertionError = (e: any) => {
     errors.forEach((error: any) => {
       let isExpected = false;
       expectedErrors.forEach((expectedError) => {
+        functions.logger.info("3---------------------");
+        functions.logger.info(error.message);
+        functions.logger.info(error.location);
         if (
           error.message === expectedError.message &&
           error.location === expectedError.location
