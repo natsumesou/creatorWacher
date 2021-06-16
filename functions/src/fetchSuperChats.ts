@@ -30,7 +30,7 @@ export const fetchSuperChats = async () => {
     });
 
     if (!streams || streams && streams.empty) {
-      return;
+      continue;
     }
 
     const tempStreams: FirebaseFirestore.QueryDocumentSnapshot<FirebaseFirestore.DocumentData>[] = [];
@@ -51,8 +51,6 @@ export const fetchSuperChats = async () => {
         };
         topic.publish(Buffer.from(JSON.stringify(obj)));
         counter += 1;
-      } else {
-        functions.logger.info(`------ not publish ${channel.id}/streams/${stream.id} / ${!stream.get("chatDisabled") ? "true" : "false"} / ${superChat.size} / ${stream.get("superChatCount")}`);
       }
       if (counter >= 10) {
         break;
