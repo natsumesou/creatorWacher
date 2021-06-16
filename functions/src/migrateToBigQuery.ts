@@ -38,9 +38,8 @@ const migrateStreams = async () => {
       tempStreams.push(stream);
     });
 
-    functions.logger.info("migrate channel videos: " + tempStreams.length);
+    functions.logger.info("migrate channel " + channel.id + " videos: " + tempStreams.length);
     await migrateStreamsToBigQuery(channel, tempStreams, ChangeType.CREATE);
-    break; // check
   }
 };
 
@@ -91,10 +90,8 @@ const migrateSuperChats = async () => {
       superChats.forEach((sc) => {
         tempSuperChats.push(sc);
       });
-      functions.logger.info("migrate channel sc: " + tempStreams.length);
+      functions.logger.info("migrate video /" + channel.id + "/streams/" + stream.id + " sc: " + tempStreams.length);
       await migrateSuperChatsToBigQuery(tempSuperChats, channel.id, stream.id, ChangeType.CREATE);
-      break; // check
     }
-    break; // check
   }
 };

@@ -121,7 +121,8 @@ const buildSuperChatQueryValues = (snapshot: DocumentSnapshot, channelId: string
   return `("${videoId}", "${snapshot.get("supporterChannelId")}", "${snapshot.get("supporterDisplayName").replace(/"/g, "\\\"")}", ${snapshot.get("amount")}, "${snapshot.get("amountText")}", "${snapshot.get("unit")}", ${snapshot.get("thumbnail") ? `"${snapshot.get("thumbnail")}"` : "NULL"}, TIMESTAMP("${snapshot.get("paidAt").toDate().toISOString()}"), "${snapshot.id}", "${channelId}")`;
 };
 
-const exec = async (bigQuery: BigQuery, query: string, retry = true) => {
+const exec = async (bigQuery: BigQuery, query: string, retryCount = 0) => {
+  const MAX_RETRY = 6;
   const options = {
     query: query,
     location: "asia-northeast1",
@@ -130,13 +131,15 @@ const exec = async (bigQuery: BigQuery, query: string, retry = true) => {
     const [job] = await bigQuery.createQueryJob(options);
     await job.getQueryResults();
   } catch (e) {
-    if (retry && isRetryableInsertionError(e)) {
-      retry = false;
-      await exec(bigQuery, query, retry);
+    if (retryCount < MAX_RETRY && isRetryableInsertionError(e)) {
+      await sleep(Math.exp(retryCount) * 10);
+      await exec(bigQuery, query, ++retryCount);
     }
     throw e;
   }
 };
+
+const sleep = (msec: number) => new Promise((resolve) => setTimeout(resolve, msec));
 
 const isRetryableInsertionError = (e: any) => {
   let isRetryable = true;
