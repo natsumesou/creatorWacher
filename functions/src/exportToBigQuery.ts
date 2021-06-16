@@ -88,7 +88,7 @@ export const migrateSuperChatsToBigQuery = async (snapshots: DocumentSnapshot[],
 };
 
 const buildSuperChatQueryValues = (snapshot: DocumentSnapshot, channelId: string) => {
-  return `(${snapshot.ref.parent.id}", "${snapshot.get("supporterChannelId")}", "${snapshot.get("supporterDisplayName").replace(/"/g, "\\\"")}", ${snapshot.get("amount")}, "${snapshot.get("amountText")}", "${snapshot.get("unit")}", ${snapshot.get("thumbnail") ? `"${snapshot.get("thumbnail")}"` : "NULL"}, TIMESTAMP("${snapshot.get("paidAt").toDate().toISOString()}"), "${snapshot.id}", "${channelId})`;
+  return `("${snapshot.ref.parent.id}", "${snapshot.get("supporterChannelId")}", "${snapshot.get("supporterDisplayName").replace(/"/g, "\\\"")}", ${snapshot.get("amount")}, "${snapshot.get("amountText")}", "${snapshot.get("unit")}", ${snapshot.get("thumbnail") ? `"${snapshot.get("thumbnail")}"` : "NULL"}, TIMESTAMP("${snapshot.get("paidAt").toDate().toISOString()}"), "${snapshot.id}", "${channelId}")`;
 };
 
 const exec = async (bigQuery: BigQuery, query: string, retry = true) => {
