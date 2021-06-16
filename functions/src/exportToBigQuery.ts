@@ -35,14 +35,14 @@ export const migrateStreamsToBigQuery = async (channel: DocumentSnapshot, snapsh
 
   if (changeType === ChangeType.CREATE) {
     const values = snapshots.map((snapshot) => buildStreamQueryValues(snapshot, channel));
-    const query = `INSERT \`${projectId}.${dataset}.${table}\` (chatAvailable, chatCount, chatDisabled, gameTitle, publishedAt, streamLengthSec, subscribeCount, superChatAmount, title, viewCount, createdAt, superChatCount, id, channelTitle, category, channelId, documentId) VALUES ${values.join(",")}`;
+    const query = `INSERT \`${projectId}.${dataset}.${table}\` (chatAvailable, chatCount, chatDisabled, gameTitle, publishedAt, streamLengthSec, subscribeCount, superChatAmount, title, viewCount, updatedAt, createdAt, superChatCount, id, channelTitle, category, channelId, documentId) VALUES ${values.join(",")}`;
     functions.logger.log("CREATE stream: " + query);
     return await exec(bigQuery, query);
   }
 
   if (changeType === ChangeType.UPDATE) {
     for await (const snapshot of snapshots) {
-      const query = `UPDATE \`${projectId}.${dataset}.${table}\` SET chatAvailable = ${snapshot.get("chatAvailable")}, chatCount = ${snapshot.get("chatCount")}, chatDisabled = ${snapshot.get("chatDisabled")}, ${snapshot.get("gameTitle") ? `gameTitle = "${snapshot.get("gameTitle").replace(/"/g, "\\\"")}",` : ""} ${snapshot.get("publishedAt") ? `publishedAt = TIMESTAMP("${snapshot.get("publishedAt").toDate().toISOString()}"),` : ""} streamLengthSec = ${snapshot.get("streamLengthSec")}, subscribeCount = ${snapshot.get("subscribeCount")}, superChatAmount = ${snapshot.get("superChatAmount")}, ${snapshot.get("title") ? `title = "${snapshot.get("title").replace(/"/g, "\\\"")}",` : ""} viewCount = ${snapshot.get("viewCount")}, ${snapshot.get("updatedAt") ? `updatedAt = TIMESTAMP("${snapshot.get("updatedAt").toDate().toISOString()}"),` : ""} ${snapshot.get("createdAt") ? `createdAt = TIMESTAMP("${snapshot.get("createdAt").toDate().toISOString()}"),` : ""} superChatCount = ${snapshot.get("superChatCount")}, id = "${snapshot.id}", channelTitle = ${channel.get("category") ? `"${channel.get("title").replace(/"/g, "\\\"")}",` : ""} category = "${channel.get("category")}", channelId = "${channel.id}", documentId = "${snapshot.id}" WHERE documentId = "${snapshot.id}"`;
+      const query = `UPDATE \`${projectId}.${dataset}.${table}\` SET chatAvailable = ${snapshot.get("chatAvailable")}, chatCount = ${snapshot.get("chatCount")}, chatDisabled = ${snapshot.get("chatDisabled")}, ${snapshot.get("gameTitle") ? `gameTitle = "${snapshot.get("gameTitle").replace(/"/g, "\\\"")}",` : ""} ${snapshot.get("publishedAt") ? `publishedAt = TIMESTAMP("${snapshot.get("publishedAt").toDate().toISOString()}"),` : ""} streamLengthSec = ${snapshot.get("streamLengthSec")}, subscribeCount = ${snapshot.get("subscribeCount")}, superChatAmount = ${snapshot.get("superChatAmount")}, ${snapshot.get("title") ? `title = "${snapshot.get("title").replace(/"/g, "\\\"")}",` : ""} viewCount = ${snapshot.get("viewCount")}, ${snapshot.get("updatedAt") ? `updatedAt = TIMESTAMP("${snapshot.get("updatedAt").toDate().toISOString()}"),` : ""} ${snapshot.get("createdAt") ? `createdAt = TIMESTAMP("${snapshot.get("createdAt").toDate().toISOString()}"),` : ""} superChatCount = ${snapshot.get("superChatCount")}, id = "${snapshot.id}", channelTitle = ${channel.get("title") ? `"${channel.get("title").replace(/"/g, "\\\"")}",` : ""} category = "${channel.get("category")}", channelId = "${channel.id}", documentId = "${snapshot.id}" WHERE documentId = "${snapshot.id}"`;
       functions.logger.log("UPDATE stream: " + query);
       return await exec(bigQuery, query);
     }
@@ -91,7 +91,7 @@ const buildSuperChatQueryValues = (snapshot: DocumentSnapshot, channelId: string
   return `(${snapshot.ref.parent.id}", "${snapshot.get("supporterChannelId")}", "${snapshot.get("supporterDisplayName").replace(/"/g, "\\\"")}", ${snapshot.get("amount")}, "${snapshot.get("amountText")}", "${snapshot.get("unit")}", ${snapshot.get("thumbnail") ? `"${snapshot.get("thumbnail")}"` : "NULL"}, TIMESTAMP("${snapshot.get("paidAt").toDate().toISOString()}"), "${snapshot.id}", "${channelId})`;
 };
 
-const exec = async (bigQuery: BigQuery, query: string) => {
+const exec = async (bigQuery: BigQuery, query: string, retry = true) => {
   const options = {
     query: query,
     location: "asia-northeast1",
@@ -99,13 +99,45 @@ const exec = async (bigQuery: BigQuery, query: string) => {
   try {
     const [job] = await bigQuery.createQueryJob(options);
     await job.getQueryResults();
-  } catch (err) {
-    if (err.code === 400) {
-      functions.logger.error(`documentId: クエリの実行に失敗しました。\n${query}\n${err.message}`);
-    } else {
-      throw err;
+  } catch (e) {
+    if (retry && isRetryableInsertionError(e)) {
+      retry = false;
+      await exec(bigQuery, query, retry);
     }
+    throw e;
   }
+};
+
+const isRetryableInsertionError = (e: any) => {
+  let isRetryable = true;
+  const expectedErrors = [
+    {
+      message: "no such field.",
+      location: "document_id",
+    },
+  ];
+  if (
+    e.response &&
+    e.response.insertErrors &&
+    e.response.insertErrors.errors
+  ) {
+    const errors = e.response.insertErrors.errors;
+    errors.forEach((error: any) => {
+      let isExpected = false;
+      expectedErrors.forEach((expectedError) => {
+        if (
+          error.message === expectedError.message &&
+          error.location === expectedError.location
+        ) {
+          isExpected = true;
+        }
+      });
+      if (!isExpected) {
+        isRetryable = false;
+      }
+    });
+  }
+  return isRetryable;
 };
 
 const getChangeType = (change: Change<DocumentSnapshot>) => {
