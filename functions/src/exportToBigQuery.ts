@@ -99,7 +99,11 @@ export const migrateSuperChatsToBigQuery = async (snapshots: DocumentSnapshot[],
         videoId: videoId,
         supporterChannelId: snapshot.get("supporterChannelId"),
         supporterDisplayName: snapshot.get("supporterDisplayName"),
-        amount: snapshot.get("amount"),
+        amount: snapshot.get("amount").toFixed(9), // 小数点以下9桁までしか保存できない
+        amountText: snapshot.get("amountText"),
+        unit: snapshot.get("unit"),
+        thumbnail: snapshot.get("thumbnail") || null,
+        paidAt: snapshot.get("paidAt").toDate(),
         documentId: snapshot.id,
         channelId: channelId,
       };
@@ -109,7 +113,7 @@ export const migrateSuperChatsToBigQuery = async (snapshots: DocumentSnapshot[],
       // SuperChatは基本書き込みのみで変更なし。DMLだとLate Limitに引っかかって書き込みがコケるのでStreaming writeする。
       await bigQuery.dataset(dataset).table(table).insert(data).catch((err) => {
         const bot = initializeBot();
-        const message = `superChat insert error: ${channelId}/streams/${videoId}/superChats/${snapshot.id} \n${err.message}\n${err.stack})`;
+        const message = `superChat insert error: ${channelId}/streams/${videoId}/superChats/${snapshot.id} \n${err.message}\n${JSON.stringify(err.errors)})`;
         bot.alert(message);
         functions.logger.error(message);
       });
