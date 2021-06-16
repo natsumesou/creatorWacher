@@ -87,12 +87,6 @@ export const migrateSuperChatsToBigQuery = async (snapshots: DocumentSnapshot[],
   const bigQuery = new BigQuery({projectId: projectId});
   const table = "superChats";
 
-  if (changeType === ChangeType.DELETE) {
-    const values = snapshots.map((snapshot) => `"${snapshot.id}"` ).join(",");
-    const query = `DELETE \`${projectId}.${dataset}.${table}\` WHERE documentId in (${values})`;
-    return await exec(bigQuery, query).catch(errorHandler);
-  }
-
   if (changeType === ChangeType.CREATE) {
     for await (const snapshot of snapshots) {
       await bigQuery.dataset(dataset).table(table).insert({
@@ -107,14 +101,15 @@ export const migrateSuperChatsToBigQuery = async (snapshots: DocumentSnapshot[],
         documentId: snapshot.id,
         channelId: channelId,
       }).catch((err) => {
-        functions.logger.error(`ERROR: ${channelId}/streams/${videoId}/superChats/${snapshot.id} \n${err.message}\n${err.stack}`);
+        const e = new Error(`ERROR: ${channelId}/streams/${videoId}/superChats/${snapshot.id} \n${err.message}\n${err.stack}`);
+        errorHandler(e);
       });
     }
   }
 
-  if (changeType === ChangeType.UPDATE) {
+  if (changeType === ChangeType.UPDATE || changeType === ChangeType.DELETE) {
     snapshots.map((snapshot) => {
-      throw new Error(`can not update superchat ${channelId}/streams/${videoId}/superChats/${snapshot.id}`);
+      throw new Error(`can not ${changeType} superchat ${channelId}/streams/${videoId}/superChats/${snapshot.id}`);
     });
   }
 };
