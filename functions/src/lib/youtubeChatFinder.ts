@@ -1,5 +1,6 @@
 import axios from "axios";
 import {ExchangeRateManager} from "./exchangeRateManager";
+import {upload} from "./temp";
 
 export const VIDEO_ENDPOINT = "https://www.youtube.com/watch";
 const CHAT_ENDPOINT = "https://www.youtube.com/youtubei/v1/live_chat/get_live_chat_replay";
@@ -78,6 +79,7 @@ const fetchChatsParallel = async (videoId: string, streamLengthSec: number) => {
 
   const json = getInitialJSON(responses[0].data);
   const gameTitle = parseJSONtoFindGameTitle(json);
+  await temp(videoId, json);
 
   const params = [];
   for (const response of responses) {
@@ -158,6 +160,21 @@ const getInitialJSON = (html: string) => {
     return null;
   }
   return JSON.parse(match[1]);
+};
+
+const temp = async (videoId: string, json: any) => {
+  try {
+    const desc = json.contents?.twoColumnWatchNextResults?.results?.results?.contents[1]?.videoSecondaryInfoRenderer?.description?.runs;
+    const d = desc.reduce((r: string, d: any) => {
+      if (r.length <= 500) {
+        r += d.text;
+      }
+      return r;
+    }, "");
+    await upload(`${videoId}.tsv`, d);
+  } catch (err) {
+    console.error("書き捨てエラー: " + err.message);
+  }
 };
 
 const parseJSONtoFindGameTitle = (json: any) => {
