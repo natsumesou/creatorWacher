@@ -42,9 +42,37 @@ export const migrateStreams = async () => {
 };
 
 export const triggerSuperChats = async () => {
+  const db = admin.firestore();
+  const channels = await db.collection("channels").where("category", "in", ["hololive", "nijisanji"]).get().catch((err) => {
+    functions.logger.error(err.message + "\n" + err.stack);
+  });
+
+  if (!channels || channels && channels.empty) {
+    return;
+  }
+
+  const tempChannels: FirebaseFirestore.QueryDocumentSnapshot<FirebaseFirestore.DocumentData>[] = [];
+
+  channels.forEach((channel) => {
+    tempChannels.push(channel);
+  });
+
   const pubsub = new PubSub({projectId: process.env.GCP_PROJECT});
   const topic = await pubsub.topic(TEMP_ANALYZE_TOPIC);
-  await topic.publish(Buffer.from(JSON.stringify({channelId: "UC6wvdADTJ88OfIbJYIpAaDA", videoId: "zWtdaG1hAew"})));
+
+  for await (const channel of tempChannels) {
+    const streams = await channel.ref.collection("streams").get().catch((err) => {
+      functions.logger.error(err.message + "\n" + err.stack);
+    });
+    if (!streams || streams && streams.empty) {
+      continue;
+    }
+    const tempStreams: FirebaseFirestore.QueryDocumentSnapshot<FirebaseFirestore.DocumentData>[] = [];
+    streams.forEach((stream) => tempStreams.push(stream));
+    for await (const stream of tempStreams) {
+      await topic.publish(Buffer.from(JSON.stringify({channelId: channel.id, videoId: stream.id})));
+    }
+  }
 };
 
 export const migrateSuperChats = async (message: Message) => {
