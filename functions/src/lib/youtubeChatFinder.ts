@@ -165,7 +165,7 @@ const getInitialJSON = (html: string) => {
 const temp = async (videoId: string, json: any) => {
   try {
     const desc = json.contents?.twoColumnWatchNextResults?.results?.results?.contents[1]?.videoSecondaryInfoRenderer?.description?.runs;
-    const d = desc.reduce((r: string, d: any) => {
+    const d = desc.reduce((r: string, d: {[text: string]: string}) => {
       if (r.length + d.text.length <= 500) {
         r += d.text;
       }
