@@ -2,6 +2,7 @@ import * as functions from "firebase-functions";
 import {DocumentSnapshot} from "firebase-functions/lib/providers/firestore";
 import {Change, EventContext} from "firebase-functions";
 import {BigQuery} from "@google-cloud/bigquery";
+import * as admin from "firebase-admin";
 import {Bot} from "./lib/discordNotify";
 
 export const ChangeType = {
@@ -93,6 +94,15 @@ export const migrateSuperChatsToBigQuery = async (snapshots: DocumentSnapshot[],
   const table = "superChats";
 
   if (changeType === ChangeType.CREATE) {
+    const db = admin.firestore();
+    const stream = await db.collection(`channels/${channelId}/streams`).doc(videoId).get().catch((err) => {
+      functions.logger.error(err.message + "\n" + err.stack);
+    });
+
+    if (!stream || !stream.exists) {
+      return;
+    }
+
     const data = snapshots.map((snapshot) => {
       return {
         videoId: videoId,
@@ -106,6 +116,7 @@ export const migrateSuperChatsToBigQuery = async (snapshots: DocumentSnapshot[],
         paidAt: snapshot.get("paidAt").toDate(),
         documentId: snapshot.id,
         channelId: channelId,
+        videoPublishedAt: stream.get("publishedAt").toDate(),
       };
     });
     // SuperChatは基本書き込みのみで変更なし。DMLだとLate Limitに引っかかって書き込みがコケるのでStreaming writeする。
