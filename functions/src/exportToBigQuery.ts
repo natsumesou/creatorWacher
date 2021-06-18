@@ -100,6 +100,7 @@ export const migrateSuperChatsToBigQuery = async (snapshots: DocumentSnapshot[],
         supporterDisplayName: snapshot.get("supporterDisplayName"),
         amount: snapshot.get("amount").toFixed(9), // 小数点以下9桁までしか保存できない
         amountText: snapshot.get("amountText"),
+        originalAmount: parseFloat(snapshot.get("amountText").replace(/[^0-9.]+/g, "")).toFixed(9),
         unit: snapshot.get("unit"),
         thumbnail: snapshot.get("thumbnail") || null,
         paidAt: snapshot.get("paidAt").toDate(),
