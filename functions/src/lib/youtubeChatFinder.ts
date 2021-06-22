@@ -155,7 +155,7 @@ const getChatRequestParams = (html: string, json: any) => {
 };
 
 const getInitialJSON = (html: string) => {
-  const match = html.match(/var ytInitialData = (.+);<\/script>/);
+  const match = html.match(/var ytInitialData = (.+});<\/script>/);
   if (match === null) {
     return null;
   }
