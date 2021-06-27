@@ -111,6 +111,8 @@ export class ExchangeRateManager {
         return 0.016;
       case "NIO":
         return 3.14;
+      case "QAR":
+        return 30.43;
       default:
         throw new Error("為替レートの処理中にエラーが発生しました: " + currencyCode);
     }
