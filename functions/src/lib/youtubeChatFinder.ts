@@ -295,7 +295,7 @@ const chatDisabled = (source: string) => {
 };
 
 const findContinuation = (json: any) => {
-  if (!json.contents.twoColumnWatchNextResults.conversationBar) {
+  if (!json.contents.twoColumnWatchNextResults.conversationBar?.liveChatRenderer) {
     return null;
   }
   return json.contents.twoColumnWatchNextResults.conversationBar.liveChatRenderer.continuations[0].reloadContinuationData.continuation;
