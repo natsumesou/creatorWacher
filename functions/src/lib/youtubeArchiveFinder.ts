@@ -21,7 +21,6 @@ export const findArchivedStreams = async (channelId: string) => {
     subscribeCount: subscribeCount,
     streams: streams,
   };
-  console.log(result);
   return result;
 };
 
@@ -41,7 +40,7 @@ const fetchVideoArchive = async (channelId: string) => {
 };
 
 const getInitialJSON = (html: string) => {
-  const match = html.match(/var ytInitialData = (.+});<\/script>/);
+  const match = html.match(/var ytInitialData = (.+);<\/script>/);
   if (match === null) {
     return null;
   }

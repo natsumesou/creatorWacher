@@ -31,7 +31,6 @@ export class ChatNotFoundError extends Error {}
 export const findChatMessages = async (videoId: string, streamLengthSec: number) => {
   const chats = await fetchChatsParallel(videoId, streamLengthSec);
   if (!chats.chatAvailable) {
-    console.log(chats);
     return {
       stream: {
         chatAvailable: chats.chatAvailable,
@@ -66,7 +65,6 @@ export const findChatMessages = async (videoId: string, streamLengthSec: number)
     },
     superChats: superchats,
   };
-  console.log(result.stream);
   return result;
 };
 
