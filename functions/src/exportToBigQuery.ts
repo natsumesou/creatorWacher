@@ -12,7 +12,7 @@ export const ChangeType = {
 };
 type ChangeType = typeof ChangeType[keyof typeof ChangeType];
 
-const errorHandler = (err: Error) => {
+const errorHandler = (err: Error, message?: string|null) => {
   const bot = initializeBot();
   bot.alert(`${err.message}\n${err.stack}`);
   throw err;
@@ -51,24 +51,24 @@ export const migrateStreamsToBigQuery = async (channel: DocumentSnapshot, snapsh
     if (changeType === ChangeType.DELETE) {
       const values = snapshots.map((snapshot) => `"${snapshot.id}"` ).join(",");
       const query = `DELETE \`${projectId}.${dataset}.${table}\` WHERE documentId in (${values})`;
-      return await exec(bigQuery, query).catch(errorHandler);
+      return await exec(bigQuery, query).catch((err) => errorHandler(err, `can not delete channel: ${channel.id}`));
     }
 
     if (changeType === ChangeType.CREATE) {
       // VideoはすぐにUPDATEが必要な上に書き込み数が少ないのでDMLで処理する
       const values = snapshots.map((snapshot) => buildStreamQueryValues(snapshot, channel));
       const query = `INSERT \`${projectId}.${dataset}.${table}\` (chatAvailable, chatCount, chatDisabled, gameTitle, publishedAt, streamLengthSec, subscribeCount, superChatAmount, title, viewCount, updatedAt, createdAt, superChatCount, id, channelTitle, category, channelId, documentId) VALUES ${values.join(",")}`;
-      return await exec(bigQuery, query).catch(errorHandler);
+      return await exec(bigQuery, query).catch((err) => errorHandler(err, `can not inert channel: ${channel.id}`));
     }
 
     if (changeType === ChangeType.UPDATE) {
       for await (const snapshot of snapshots) {
         const query = `UPDATE \`${projectId}.${dataset}.${table}\` SET ${(snapshot.get("chatAvailable") !== undefined) ? `chatAvailable = ${snapshot.get("chatAvailable")},` : ""} chatCount = ${snapshot.get("chatCount")}, ${(snapshot.get("chatDisabled") !== undefined) ? `chatDisabled = ${snapshot.get("chatDisabled")},` : ""} ${snapshot.get("gameTitle") ? `gameTitle = "${snapshot.get("gameTitle").replace(/"/g, "\\\"")}",` : ""} ${snapshot.get("publishedAt") ? `publishedAt = TIMESTAMP("${snapshot.get("publishedAt").toDate().toISOString()}"),` : ""} streamLengthSec = ${snapshot.get("streamLengthSec")}, subscribeCount = ${snapshot.get("subscribeCount")}, superChatAmount = ${snapshot.get("superChatAmount").toFixed(9)}, ${snapshot.get("title") ? `title = "${snapshot.get("title").replace(/"/g, "\\\"")}",` : ""} viewCount = ${snapshot.get("viewCount")}, ${snapshot.get("updatedAt") ? `updatedAt = TIMESTAMP("${snapshot.get("updatedAt").toDate().toISOString()}"),` : ""} ${snapshot.get("createdAt") ? `createdAt = TIMESTAMP("${snapshot.get("createdAt").toDate().toISOString()}"),` : ""} superChatCount = ${snapshot.get("superChatCount")}, id = "${snapshot.id}", channelTitle = ${channel.get("title") ? `"${channel.get("title").replace(/"/g, "\\\"")}",` : ""} category = "${channel.get("category")}", channelId = "${channel.id}", documentId = "${snapshot.id}" WHERE documentId = "${snapshot.id}"`;
-        return await exec(bigQuery, query).catch(errorHandler);
+        return await exec(bigQuery, query).catch((err) => errorHandler(err, `can not update channel: ${channel.id}`));
       }
     }
   } catch (err) {
-    errorHandler(err);
+    errorHandler(err, `error occured channel: ${channel.id}`);
   }
 };
 
