@@ -21,6 +21,7 @@ export const findArchivedStreams = async (channelId: string) => {
     subscribeCount: subscribeCount,
     streams: streams,
   };
+  console.log(result);
   return result;
 };
 
@@ -72,7 +73,7 @@ const parseJSONtoFindStreams = (json: any) => {
   const streams = videos.itemSectionRenderer.contents[0].gridRenderer.items.reduce((result: Array<any>, item: any) => {
     // live予定やプレミアム公開、動画の場合はスキップし続ける
     const publishedDateText = item.gridVideoRenderer?.publishedTimeText?.simpleText || "";
-    if (publishedDateText.includes("配信済み") && isRecursiveLimit(publishedDateText)) {
+    if (isRecursiveLimit(publishedDateText)) {
       result.push(item.gridVideoRenderer);
     }
     return result;
