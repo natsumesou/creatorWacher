@@ -180,7 +180,7 @@ const temp = async (videoId: string, json: any) => {
 const parseJSONtoFindGameTitle = (json: any) => {
   const contents = json.contents.twoColumnWatchNextResults.results.results.contents;
   const streamMeta = contents.find((content:any) => {
-    return content.videoSecondaryInfoRenderer !== undefined;
+    return content !== undefined && content?.videoSecondaryInfoRenderer !== undefined;
   });
   // 動画の音楽情報が登録されている場合に当てはまってしまう
   // 動画とゲーム両方登録されていた場合の挙動は未検証
