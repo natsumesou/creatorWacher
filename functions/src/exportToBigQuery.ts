@@ -4,6 +4,7 @@ import {Change, EventContext} from "firebase-functions";
 import {BigQuery} from "@google-cloud/bigquery";
 import * as admin from "firebase-admin";
 import {Bot} from "./lib/discordNotify";
+import {sleep} from "./lib/utility";
 
 export const ChangeType = {
   CREATE: "create",
@@ -152,8 +153,6 @@ const exec = async (bigQuery: BigQuery, query: string, retryCount = 0) => {
     throw e;
   }
 };
-
-const sleep = (msec: number) => new Promise((resolve) => setTimeout(resolve, msec));
 
 const getChangeType = (change: Change<DocumentSnapshot>) => {
   if (!change.after.exists) {

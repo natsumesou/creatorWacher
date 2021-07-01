@@ -2,6 +2,7 @@ import * as functions from "firebase-functions";
 import {BigQuery} from "@google-cloud/bigquery";
 import {Bot} from "./lib/discordNotify";
 import {upload} from "./lib/cloudStorage";
+import {sleep} from "./lib/utility";
 
 const initializeBot = () => {
   return new Bot(
@@ -70,5 +71,3 @@ const exec = async (bigQuery: BigQuery, query: string, retryCount = 0) => {
     throw e;
   }
 };
-
-const sleep = (msec: number) => new Promise((resolve) => setTimeout(resolve, msec));

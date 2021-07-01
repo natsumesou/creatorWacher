@@ -1,10 +1,12 @@
 import axios from "axios";
 import {ExchangeRateManager} from "./exchangeRateManager";
 import {upload} from "./cloudStorage";
+import {sleep} from "./utility";
 
 export const VIDEO_ENDPOINT = "https://www.youtube.com/watch";
 const CHAT_ENDPOINT = "https://www.youtube.com/youtubei/v1/live_chat/get_live_chat_replay";
 const PARALLEL_CNUMBER = 10;
+const SLEEP_MILLISEC = 100;
 
 export type SuperChat = {
   supporterChannelId: string,
@@ -31,7 +33,7 @@ export class ChatNotFoundError extends Error {}
 export const findChatMessages = async (videoId: string, streamLengthSec: number) => {
   const chats = await fetchChatsParallel(videoId, streamLengthSec);
   if (!chats.chatAvailable) {
-    return {
+    const result = {
       stream: {
         chatAvailable: chats.chatAvailable,
         chatDisabled: chats.chatDisabled,
@@ -43,6 +45,7 @@ export const findChatMessages = async (videoId: string, streamLengthSec: number)
       },
       superChats: {},
     };
+    return result;
   }
 
   const superchats = chats.superchats;
@@ -206,6 +209,7 @@ const fetchChats = async (data: any, chatIds: Array<string|null>) => {
 
     if (chats.nextContinuation) {
       data.continuation = chats.nextContinuation;
+      sleep(SLEEP_MILLISEC);
     } else {
       break;
     }
