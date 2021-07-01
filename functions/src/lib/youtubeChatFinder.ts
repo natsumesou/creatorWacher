@@ -1,13 +1,10 @@
 import axios from "axios";
 import {ExchangeRateManager} from "./exchangeRateManager";
 import {upload} from "./cloudStorage";
-import {concurrentPromise} from "./utility";
 
 export const VIDEO_ENDPOINT = "https://www.youtube.com/watch";
 const CHAT_ENDPOINT = "https://www.youtube.com/youtubei/v1/live_chat/get_live_chat_replay";
 const PARALLEL_CNUMBER = 10;
-const PROMISE_PARALLEL = 3;
-const SLEEP_MILLISEC = 500;
 
 export type SuperChat = {
   supporterChannelId: string,
@@ -102,9 +99,9 @@ const fetchChatsParallel = async (videoId: string, streamLengthSec: number) => {
 
   const firstChatList = [];
   for (const data of params) {
-    firstChatList.push(() => fetchChat(data, []));
+    firstChatList.push(fetchChat(data, []));
   }
-  const firstChatBlock = await concurrentPromise(firstChatList, PROMISE_PARALLEL, SLEEP_MILLISEC);
+  const firstChatBlock = await Promise.all(firstChatList);
   const chatIds = firstChatBlock.map((chats) => chats.firstChatId);
 
   const fetchChatList = [];
@@ -115,9 +112,9 @@ const fetchChatsParallel = async (videoId: string, streamLengthSec: number) => {
     }
     data.continuation = continuation;
     const uniqIds = [...new Set(chatIds)]; // 重複IDがある場合はユニークにする
-    fetchChatList.push(() => fetchChats(data, uniqIds));
+    fetchChatList.push(fetchChats(data, uniqIds));
   }
-  const chats = await concurrentPromise(fetchChatList, PROMISE_PARALLEL, SLEEP_MILLISEC);
+  const chats = await Promise.all(fetchChatList);
 
   const result = chats.concat(firstChatBlock).reduce((total: any, chat: any) => {
     total.chatCount += chat.chatCount;
