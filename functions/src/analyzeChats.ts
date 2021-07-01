@@ -38,8 +38,6 @@ export const analyzeChats = async (message: Message) => {
         await updateStream(stream, {chatAvailable: false, chatDisabled: false});
       }
       await processChatNotFound(bot, stream);
-    } else if (err.response && err.response.status === 429) {
-      // YouTubeの規制に引っかかったのでエラー処理は特にしない
     } else {
       const message = err.message + "\n<" + generateURL(stream.id)+">\n" + err.stack;
       await bot.alert(message);
