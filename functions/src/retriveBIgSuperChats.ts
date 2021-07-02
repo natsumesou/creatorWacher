@@ -1,6 +1,5 @@
 import * as functions from "firebase-functions";
-import {findChatMessages, SuperChat} from "./lib/youtubeChatFinder";
-import {DocumentSnapshot} from "firebase-functions/lib/providers/firestore";
+import {SuperChat} from "./lib/youtubeChatFinder";
 import * as admin from "firebase-admin";
 import {Message} from "firebase-functions/lib/providers/pubsub";
 import {FieldPath} from "@google-cloud/firestore";
@@ -18,7 +17,6 @@ export const retriveBigSuperChats = async (message: Message) => {
   }
   const stream = streams.docs[0];
   functions.logger.log("stream: " + stream.id);
-  // const result = await findChatMessages(stream.id, stream.get("streamLengthSec"));
   const result = {
     superChats: {
       "bbbbb": {
@@ -51,7 +49,6 @@ export const retriveBigSuperChats = async (message: Message) => {
     },
   };
   await saveSuperChats(metadata, result.superChats);
-  // await updateStream(stream, {superChatCount: 0, superChatAmount: 0});
 };
 
 const messageToJSON = (message: Message) => {
@@ -62,11 +59,6 @@ const messageToJSON = (message: Message) => {
   };
 };
 
-const updateStream = async (snapshot: DocumentSnapshot, data: any) => {
-  await snapshot.ref.update({...data, updatedAt: new Date()}).catch((err) => {
-    functions.logger.error(err.message + "\n" + err.stack);
-  });
-};
 
 const saveSuperChats = async (metadata: any, superChats: {[id:string]: SuperChat}) => {
   const db = admin.firestore();
