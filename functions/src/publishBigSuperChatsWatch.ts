@@ -2,15 +2,14 @@ import * as admin from "firebase-admin";
 import {PubSub} from "@google-cloud/pubsub";
 import {WATCH_BIGSUPERCHATS_TOPIC} from "./index";
 
-const SUPERCHAT_AMOUNT_ABOVE = 5000000; // チェック対象のスパチャ額
+const SUPERCHAT_AMOUNT_ABOVE = 10000000; // チェック対象のスパチャ額
 
 export const publishBigSuperChatsWatch = async () => {
   const db = admin.firestore();
   const yesterday = new Date();
-  yesterday.setDate(yesterday.getDate() - 1);
+  yesterday.setDate(yesterday.getDate() - 3);
   const streamRef = db.collectionGroup("streams")
-  // .where("publishedAt", ">=", yesterday) // 一日以内のデータをチェック
-      .where("title", "==", "卒業。　#桐生ココ卒業LIVE #GoodbyeCoco")
+      .where("publishedAt", ">=", yesterday) // 一日以内のデータをチェック
       .where("superChatAmount", ">=", SUPERCHAT_AMOUNT_ABOVE); // 500万円以上のスパチャをされた配信はデータ漏れが無いかチェックする
   const streams = await streamRef.get();
 
