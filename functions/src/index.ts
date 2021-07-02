@@ -6,8 +6,6 @@ import {updateArchives} from "./updateArchives";
 import {RuntimeOptions} from "firebase-functions";
 import {exportStreamsToBigQuery, exportSuperChatsToBigQuery} from "./exportToBigQuery";
 import {calcIndivisualSuperChats} from "./calcIndivisualSuperChats";
-import {publishBigSuperChatsWatch} from "./publishBigSuperChatsWatch";
-import {retriveBigSuperChats} from "./retriveBIgSuperChats";
 
 admin.initializeApp();
 
@@ -15,7 +13,6 @@ const REGION = "asia-northeast1";
 export const WATCH_TOPIC = "watch-creator";
 export const ANALYZE_TOPIC = "analyze-chat";
 export const TEMP_ANALYZE_TOPIC = "temp-analyze-chat";
-export const WATCH_BIGSUPERCHATS_TOPIC = "watch-bigsuperchats";
 
 const weakRuntimeOpts: RuntimeOptions = {
   timeoutSeconds: 60,
@@ -32,5 +29,3 @@ export const AnalyzeChatsFunction = functions.runWith(strongRuntimeOpts).region(
 export const CalcIndivisualSuperChats = functions.runWith({...strongRuntimeOpts, ...{timeoutSeconds: 120}}).region(REGION).pubsub.schedule("0 9 * * *").timeZone("Asia/Tokyo").onRun(calcIndivisualSuperChats);
 export const ExportStreamsToBigQuery = functions.runWith(weakRuntimeOpts).region(REGION).firestore.document("channels/{channelId}/streams/{videoId}").onWrite(exportStreamsToBigQuery);
 export const ExportSuperChatsToBigQuery = functions.runWith(weakRuntimeOpts).region(REGION).firestore.document("channels/{channelId}/streams/{videoId}/superChats/{superChatId}").onWrite(exportSuperChatsToBigQuery);
-export const PublishBigSuperChatsWatch = functions.runWith(weakRuntimeOpts).region(REGION).pubsub.schedule("every 5 minutes").onRun(publishBigSuperChatsWatch);
-export const RetriveBigSuperChatsWatch = functions.runWith(strongRuntimeOpts).region(REGION).pubsub.topic(WATCH_BIGSUPERCHATS_TOPIC).onPublish(retriveBigSuperChats);

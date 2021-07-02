@@ -4,7 +4,6 @@ import {upload} from "./cloudStorage";
 
 export const VIDEO_ENDPOINT = "https://www.youtube.com/watch";
 const CHAT_ENDPOINT = "https://www.youtube.com/youtubei/v1/live_chat/get_live_chat_replay";
-const PARALLEL_CNUMBER = 10;
 
 export type SuperChat = {
   supporterChannelId: string,
@@ -26,10 +25,12 @@ export class ChatNotFoundError extends Error {}
  * returnで返すsubscribeCountはチャンネル登録者数ではなく配信でのメンバー加入数のこと
  * @param {string} videoId video id
  * @param {number} streamLengthSec video length
+ * @param {number} concurrency concurrency number to fetch chat data
  * @return {any} analyzed data
  */
-export const findChatMessages = async (videoId: string, streamLengthSec: number) => {
-  const chats = await fetchChatsParallel(videoId, streamLengthSec);
+export const findChatMessages = async (videoId: string, streamLengthSec: number, concurrency = 10) => {
+  const chats = await fetchChatsParallel(videoId, streamLengthSec, concurrency);
+  console.log("done");
   if (!chats.chatAvailable) {
     const result = {
       stream: {
@@ -69,10 +70,10 @@ export const findChatMessages = async (videoId: string, streamLengthSec: number)
   return result;
 };
 
-const fetchChatsParallel = async (videoId: string, streamLengthSec: number) => {
-  const timeUnit = Math.floor(streamLengthSec / PARALLEL_CNUMBER);
+const fetchChatsParallel = async (videoId: string, streamLengthSec: number, concurrency: number) => {
+  const timeUnit = Math.floor(streamLengthSec / concurrency);
   const fetchVideoList = [];
-  for (let i = 0; i < PARALLEL_CNUMBER; i++) {
+  for (let i = 0; i < concurrency; i++) {
     const time = timeUnit * i + "s";
     fetchVideoList.push(fetchVideoPage(videoId, time));
   }
@@ -220,6 +221,7 @@ const fetchChats = async (data: any, chatIds: Array<string|null>) => {
 };
 
 const fetchChat = async (data: any, chatIds: Array<string|null>) => {
+  console.log("fetch continuation: " + data.continuation);
   const chatdataResponse = await fetchChatData(data.apiKey, data.continuation, data.client);
   const chatActions = chatdataResponse.data.continuationContents.liveChatContinuation.actions;
 

@@ -4,6 +4,7 @@ import {Bot} from "./lib/discordNotify";
 import {DocumentSnapshot} from "firebase-functions/lib/providers/firestore";
 import * as admin from "firebase-admin";
 import {Message} from "firebase-functions/lib/providers/pubsub";
+import * as fs from "fs";
 
 export const analyzeChats = async (message: Message) => {
   const metadata = messageToJSON(message);
@@ -25,13 +26,13 @@ export const analyzeChats = async (message: Message) => {
   );
   try {
     const result = await findChatMessages(stream.id, stream.get("streamLengthSec"));
-    await updateStream(stream, result.stream);
     if (!result.stream.chatAvailable) {
       await bot.message(formatNonChatMessage(stream, result.stream));
     } else {
       await saveSuperChats(metadata, result.superChats);
       await bot.message(formatMessage(stream, result.stream));
     }
+    await updateStream(stream, result.stream);
   } catch (err) {
     if (err instanceof ChatNotFoundError) {
       if (stream.get("chatAvailable") !== false || stream.get("chatAvailable") !== false) {
@@ -46,9 +47,45 @@ export const analyzeChats = async (message: Message) => {
   }
 };
 
+/**
+ * スパチャが多すぎる場合(1000万円超えるくらい)にチャットデータの分割処理がぶっ壊れて歯抜けになるため
+ * ローカルで分割せずに最初からシーケンシャルに取得していく
+ * 多分ログデータが正常にソートされずに取得できてしまうのが問題っぽい(分割すると半分ぐらいのチャットがロストする)
+ * ※実行時間がかかりすぎるので必ずローカルで処理すること
+ * @param {string} message channelId,videoIdのjson stringを入れる
+ */
+export const analyzeChatsManually = async (message: string) => {
+  const projectId = "discord-315419";
+  const credential = fs.readFileSync("../../discord-315419-firebase-adminsdk-pszz7-25277621db.json", "utf8");
+
+  admin.initializeApp({
+    projectId: projectId,
+    credential: admin.credential.cert(credential),
+  });
+  const metadata = messageStringToJSON(message);
+
+  const db = admin.firestore();
+  const streamRef = db.collection(`channels/${metadata.channelId}/streams`).doc(metadata.videoId);
+  const stream = await streamRef.get().catch((err) => {
+    console.error(err.message + "\n" + err.stack);
+  });
+  if (!stream || !stream.exists) {
+    throw new Error(`動画データがfirestoreから取得できません: ${JSON.stringify(metadata)}`);
+  }
+  const result = await findChatMessages(stream.id, 0, 1); // 分割しないので秒数0、concurrency 1で実行。
+  console.log("save superChats");
+  await saveSuperChats(metadata, result.superChats, true);
+  console.log("update stream");
+  await updateStream(stream, result.stream);
+};
+
 const messageToJSON = (message: Message) => {
   const jsonstr = Buffer.from(message.data, "base64").toString("utf-8");
-  return JSON.parse(jsonstr) as {
+  return messageStringToJSON(jsonstr);
+};
+
+const messageStringToJSON = (message: string) => {
+  return JSON.parse(message) as {
     channelId: string,
     videoId: string,
   };
@@ -60,7 +97,7 @@ const updateStream = async (snapshot: DocumentSnapshot, data: any) => {
   });
 };
 
-const saveSuperChats = async (metadata: any, superChats: {[id:string]: SuperChat}) => {
+const saveSuperChats = async (metadata: any, superChats: {[id:string]: SuperChat}, checkExists?: boolean) => {
   const db = admin.firestore();
   let batch = db.batch();
   const limit = 500;
@@ -69,22 +106,32 @@ const saveSuperChats = async (metadata: any, superChats: {[id:string]: SuperChat
     if (!Object.prototype.hasOwnProperty.call(superChats, id)) {
       continue;
     }
-    const doc = db.collection(`channels/${metadata.channelId}/streams/${metadata.videoId}/superChats`).doc(id);
-    batch.set(doc, superChats[id]);
-    i += 1;
-    if (i === limit) {
+    if (checkExists) {
+      const docRef = db.collection(`channels/${metadata.channelId}/streams/${metadata.videoId}/superChats`).doc(id);
+      const doc = await docRef.get();
+      if (!doc.exists) {
+        batch.set(docRef, superChats[id]);
+        i += 1;
+      }
+    } else {
+      const docRef = db.collection(`channels/${metadata.channelId}/streams/${metadata.videoId}/superChats`).doc(id);
+      batch.set(docRef, superChats[id]);
+      i += 1;
+    }
+    if (i % limit === 0) {
       await batch.commit().catch((err) => {
         functions.logger.error(err.message + "\n" + err.stack);
       });
       batch = db.batch();
-      i = 0;
     }
   }
-  if (i !== limit) {
+  if (i % limit !== 0) {
     await batch.commit().catch((err) => {
       functions.logger.error(err.message + "\n" + err.stack);
     });
   }
+
+  console.log(`insert ${i} superChats / ${JSON.stringify(metadata)}`);
 };
 
 const processChatNotFound = async (bot: Bot, snapshot: DocumentSnapshot) => {
