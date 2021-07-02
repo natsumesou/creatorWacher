@@ -4,7 +4,6 @@ import {Bot} from "./lib/discordNotify";
 import {DocumentSnapshot} from "firebase-functions/lib/providers/firestore";
 import * as admin from "firebase-admin";
 import {Message} from "firebase-functions/lib/providers/pubsub";
-import * as fs from "fs";
 
 export const analyzeChats = async (message: Message) => {
   const metadata = messageToJSON(message);
@@ -56,7 +55,7 @@ export const analyzeChats = async (message: Message) => {
  */
 export const analyzeChatsManually = async (message: string) => {
   const projectId = "discord-315419";
-  const credential = fs.readFileSync("../../discord-315419-firebase-adminsdk-pszz7-25277621db.json", "utf8");
+  const credential = "./discord-315419-firebase-adminsdk-pszz7-25277621db.json";
 
   admin.initializeApp({
     projectId: projectId,
@@ -77,6 +76,7 @@ export const analyzeChatsManually = async (message: string) => {
   await saveSuperChats(metadata, result.superChats, true);
   console.log("update stream");
   await updateStream(stream, result.stream);
+  console.log("done");
 };
 
 const messageToJSON = (message: Message) => {
