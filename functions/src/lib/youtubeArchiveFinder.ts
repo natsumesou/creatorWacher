@@ -69,15 +69,14 @@ const parseJSONtoFindStreams = (json: any) => {
   if (!videos.itemSectionRenderer.contents[0].gridRenderer) {
     throw new Error("why not items?\n" + JSON.stringify(videos.itemSectionRenderer));
   }
-  const streams = videos.itemSectionRenderer.contents[0].gridRenderer.items.reduce((result: Array<any>, item: any) => {
+  return videos.itemSectionRenderer.contents[0].gridRenderer.items.reduce((result: Array<any>, item: any) => {
     // live予定やプレミアム公開、動画の場合はスキップし続ける
     const publishedDateText = item.gridVideoRenderer?.publishedTimeText?.simpleText || "";
     if (isRecursiveLimit(publishedDateText)) {
-      result.push(item.gridVideoRenderer);
+      result.push(formatStream(item.gridVideoRenderer));
     }
     return result;
   }, []);
-  return streams.map((stream:any) => formatStream(stream));
 };
 
 const invalidJSONPayload = (json: any) => {
