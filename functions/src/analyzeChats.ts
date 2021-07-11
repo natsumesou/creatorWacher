@@ -39,7 +39,7 @@ export const analyzeChats = async (message: Message) => {
       }
       await processChatNotFound(bot, stream);
     } else {
-      const message = err.message + "\n<" + generateURL(stream.id)+">\n" + err.stack;
+      const message = JSON.stringify(metadata) + "\n" + err.message + "\n<" + generateURL(stream.id)+">\n" + err.stack;
       throw new Error(message);
     }
   }
