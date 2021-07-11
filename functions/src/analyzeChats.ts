@@ -39,6 +39,9 @@ export const analyzeChats = async (message: Message) => {
       }
       await processChatNotFound(bot, stream);
     } else {
+      if (err.response && (err.response.status === 429 || err.response.status === 503)) {
+        // YouTubeがよく吐くので無視する
+      }
       const message = err.message + "\n<" + generateURL(stream.id)+">\n" + err.stack;
       throw new Error(message);
     }
