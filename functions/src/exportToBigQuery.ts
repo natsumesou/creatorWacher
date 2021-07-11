@@ -107,6 +107,7 @@ export const migrateSuperChatsToBigQuery = async (snapshots: DocumentSnapshot[],
         documentId: snapshot.id,
         channelId: channelId,
         videoPublishedAt: stream.get("publishedAt").toDate(),
+        message: snapshot.get("message"),
       };
     });
     // SuperChatは基本書き込みのみで変更なし。DMLだとLate Limitに引っかかって書き込みがコケるのでStreaming writeする。

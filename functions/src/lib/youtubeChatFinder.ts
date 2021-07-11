@@ -13,6 +13,7 @@ export type SuperChat = {
   unit: string,
   amountText: string,
   thumbnail: string,
+  message: string,
 };
 
 /**
@@ -326,39 +327,45 @@ const processChats = (chats: Array<any>, chatIds: Array<string|null>) => {
   const subscribes:any = {};
   const end = chats.some((chat: any) => {
     return chat.replayChatItemAction.actions.some((action: any) => {
-      if (action.addChatItemAction?.item?.liveChatPaidMessageRenderer) {
-        const amountText = action.addChatItemAction.item.liveChatPaidMessageRenderer.purchaseAmountText.simpleText;
+      if (action.addChatItemAction?.item?.liveChatPaidMessageRenderer || action.addChatItemAction?.item?.liveChatPaidStickerRenderer) {
+        const renderer = action.addChatItemAction?.item?.liveChatPaidMessageRenderer || action.addChatItemAction?.item?.liveChatPaidStickerRenderer;
+        const isSticker = !!action.addChatItemAction?.item?.liveChatPaidStickerRenderer;
+        const amountText = renderer.purchaseAmountText.simpleText;
         const amountinfo = stringToAmount(rate, amountText);
-        const id = action.addChatItemAction.item.liveChatPaidMessageRenderer.id;
+        const id = renderer.id;
+        const message = isSticker ? null : renderer.message ? renderer.message.runs[0].text : "";
+
         if (!superchats[id]) {
           superchats[id] = {} as SuperChat;
         }
         const meta = {
-          supporterChannelId: action.addChatItemAction.item.liveChatPaidMessageRenderer.authorExternalChannelId,
-          supporterDisplayName: action.addChatItemAction.item.liveChatPaidMessageRenderer.authorName.simpleText,
-          paidAt: new Date(parseInt(action.addChatItemAction.item.liveChatPaidMessageRenderer.timestampUsec.slice(0, -3))),
+          supporterChannelId: renderer.authorExternalChannelId,
+          supporterDisplayName: renderer.authorName.simpleText,
+          paidAt: new Date(parseInt(renderer.timestampUsec.slice(0, -3))),
           amount: amountinfo.amount,
           unit: amountinfo.unit,
           amountText: amountText,
+          message: message,
         };
         superchats[id] = {...superchats[id], ...meta};
       }
-      if (action.addLiveChatTickerItemAction?.item?.liveChatTickerPaidMessageItemRenderer) {
-        const id = action.addLiveChatTickerItemAction.item.liveChatTickerPaidMessageItemRenderer.id;
+      if (action.addLiveChatTickerItemAction?.item?.liveChatTickerPaidMessageItemRenderer || action.addLiveChatTickerItemAction?.item?.liveChatTickerPaidStickerItemRenderer) {
+        const renderer = action.addLiveChatTickerItemAction?.item?.liveChatTickerPaidMessageItemRenderer || action.addLiveChatTickerItemAction?.item?.liveChatTickerPaidStickerItemRenderer;
+        const id = renderer.id;
         if (!superchats[id]) {
           superchats[id] = {} as SuperChat;
         }
 
         let biggerIndex = 0;
         let biggerWidth = 0;
-        action.addLiveChatTickerItemAction.item.liveChatTickerPaidMessageItemRenderer.authorPhoto.thumbnails.map((thumb: any, i: number) => {
+        renderer.authorPhoto.thumbnails.map((thumb: any, i: number) => {
           if (thumb.width > biggerWidth) {
             biggerWidth = thumb.width;
             biggerIndex = i;
           }
         });
         const meta = {
-          thumbnail: action.addLiveChatTickerItemAction.item.liveChatTickerPaidMessageItemRenderer.authorPhoto.thumbnails[biggerIndex].url,
+          thumbnail: renderer.authorPhoto.thumbnails[biggerIndex].url,
         };
         superchats[id] = {...superchats[id], ...meta};
       }
