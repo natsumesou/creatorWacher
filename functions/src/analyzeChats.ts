@@ -40,7 +40,6 @@ export const analyzeChats = async (message: Message) => {
       await processChatNotFound(bot, stream);
     } else {
       const message = err.message + "\n<" + generateURL(stream.id)+">\n" + err.stack;
-      await bot.alert(message);
       throw new Error(message);
     }
   }

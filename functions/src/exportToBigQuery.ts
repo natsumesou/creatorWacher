@@ -3,7 +3,6 @@ import {DocumentSnapshot} from "firebase-functions/lib/providers/firestore";
 import {Change, EventContext} from "firebase-functions";
 import {BigQuery} from "@google-cloud/bigquery";
 import * as admin from "firebase-admin";
-import {Bot} from "./lib/discordNotify";
 import {sleep} from "./lib/utility";
 
 export const ChangeType = {
@@ -14,17 +13,7 @@ export const ChangeType = {
 type ChangeType = typeof ChangeType[keyof typeof ChangeType];
 
 const errorHandler = (err: Error, message?: string|null) => {
-  const bot = initializeBot();
-  bot.alert(`${err.message}\n${err.stack}`);
   throw err;
-};
-
-const initializeBot = () => {
-  return new Bot(
-      functions.config().discord.hololive,
-      functions.config().discord.system,
-      functions.config().discord.activity,
-  );
 };
 
 const dataset = "channels";
@@ -122,9 +111,7 @@ export const migrateSuperChatsToBigQuery = async (snapshots: DocumentSnapshot[],
     });
     // SuperChatは基本書き込みのみで変更なし。DMLだとLate Limitに引っかかって書き込みがコケるのでStreaming writeする。
     await bigQuery.dataset(dataset).table(table).insert(data).catch((err) => {
-      const bot = initializeBot();
       const message = `superChat insert error: ${channelId}/streams/${videoId}/superChats \n${err.message}\n${JSON.stringify(err.errors)})`;
-      bot.alert(message);
       functions.logger.error(message);
     });
   }

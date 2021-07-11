@@ -29,7 +29,6 @@ export const updateArchives = async (message: Message) => {
       // 万が一これで本当のエラーを握りつぶしている可能性がないように一応厳密にチェックはしている…
     } else {
       const message = err.message + "\n<" + CHANNEL_ENDPOINT + channel.id + ">\n" + err.stack;
-      await bot.alert(message);
       throw new Error(message);
     }
   }

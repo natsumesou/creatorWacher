@@ -13,35 +13,27 @@ const initializeBot = () => {
 };
 
 export const calcIndivisualSuperChats = async () => {
-  const bot = initializeBot();
-  try {
-    const projectId = process.env.GCLOUD_PROJECT;
-    const bigQuery = new BigQuery({projectId: projectId});
+  const projectId = process.env.GCLOUD_PROJECT;
+  const bigQuery = new BigQuery({projectId: projectId});
 
-    // 実行タイミングの前日分までの月間スパチャ(個人のチャンネルごとのスパチャ金額)を集計
-    const query = "SELECT ranking.supporterChannelId,ranking.supporterDisplayName,ranking.thumbnail,CONCAT(FORMAT(\"%'.0f\", ranking.superChatAmount), '円') as superChatAmount,ranking.totalSuperChatAmount,ranking.channelId,ranking.channelTitle,video.videoId    FROM (        SELECT process.supporterChannelId,sco.supporterDisplayName,sco.thumbnail,superChatAmount,total.total as totalSuperChatAmount,process.channelId, process.channelTitle        FROM (            SELECT sc.supporterChannelId,sum(sc.amount) as superChatAmount, sc.channelId, channelTitle            FROM `discord-315419.channels.superChats` as sc            JOIN (                SELECT channelId,channelTitle FROM `discord-315419.channels.videos`                WHERE category IN ('hololive', 'nijisanji')                GROUP BY channelId,channelTitle) as channel            ON sc.channelId = channel.channelId            WHERE sc.videoPublishedAt < TIMESTAMP_SUB(TIMESTAMP(DATE_ADD(LAST_DAY(DATE_SUB(CURRENT_DATE('Asia/Tokyo'), INTERVAL 1 DAY)), INTERVAL 1 DAY)), INTERVAL 4 HOUR) AND sc.videoPublishedAt >= TIMESTAMP_SUB(TIMESTAMP(DATE_SUB(DATE_ADD(LAST_DAY(DATE_SUB(CURRENT_DATE('Asia/Tokyo'), INTERVAL 1 DAY)), INTERVAL 1 DAY), INTERVAL 1 MONTH)), INTERVAL 4 HOUR)            GROUP BY supporterChannelId,channelId,sc.channelId,channelTitle        ) as process        JOIN (            select AS VALUE ARRAY_AGG(scb ORDER BY paidAt desc limit 1)[OFFSET(0)] from `discord-315419.channels.superChats` as scb where scb.videoPublishedAt < TIMESTAMP_SUB(TIMESTAMP(DATE_ADD(LAST_DAY(DATE_SUB(CURRENT_DATE('Asia/Tokyo'), INTERVAL 1 DAY)), INTERVAL 1 DAY)), INTERVAL 4 HOUR) AND scb.videoPublishedAt >= TIMESTAMP_SUB(TIMESTAMP(DATE_SUB(DATE_ADD(LAST_DAY(DATE_SUB(CURRENT_DATE('Asia/Tokyo'), INTERVAL 1 DAY)), INTERVAL 1 DAY), INTERVAL 1 MONTH)), INTERVAL 4 HOUR) group by supporterChannelId            ) as sco        ON sco.supporterChannelId = process.supporterChannelId        JOIN (            select supporterChannelId,CONCAT(FORMAT(\"%'.0f\", sum(amount)), '円') as total from `discord-315419.channels.superChats` WHERE videoPublishedAt < TIMESTAMP_SUB(TIMESTAMP(DATE_ADD(LAST_DAY(DATE_SUB(CURRENT_DATE('Asia/Tokyo'), INTERVAL 1 DAY)), INTERVAL 1 DAY)), INTERVAL 4 HOUR) AND videoPublishedAt >= TIMESTAMP_SUB(TIMESTAMP(DATE_SUB(DATE_ADD(LAST_DAY(DATE_SUB(CURRENT_DATE('Asia/Tokyo'), INTERVAL 1 DAY)), INTERVAL 1 DAY), INTERVAL 1 MONTH)), INTERVAL 4 HOUR) group by supporterChannelId        ) as total        ON process.supporterChannelId = total.supporterChannelId        ) as ranking        JOIN (            select * from (select supporterChannelId,channelId,videoId, ROW_NUMBER() over (PARTITION BY channelId,supporterChannelId order by sum(amount) desc ) as videoRank from `discord-315419.channels.superChats` where videoPublishedAt < TIMESTAMP_SUB(TIMESTAMP(DATE_ADD(LAST_DAY(DATE_SUB(CURRENT_DATE('Asia/Tokyo'), INTERVAL 1 DAY)), INTERVAL 1 DAY)), INTERVAL 4 HOUR) AND videoPublishedAt >= TIMESTAMP_SUB(TIMESTAMP(DATE_SUB(DATE_ADD(LAST_DAY(DATE_SUB(CURRENT_DATE('Asia/Tokyo'), INTERVAL 1 DAY)), INTERVAL 1 DAY), INTERVAL 1 MONTH)), INTERVAL 4 HOUR) group by supporterChannelId,channelId,videoId) where videoRank = 1        ) as video        ON ranking.supporterChannelId = video.supporterChannelId and ranking.channelId = video.channelId        ORDER BY ranking.supporterChannelId, ranking.superChatAmount desc";
-    const rows = await exec(bigQuery, query).catch((err) => {
-      bot.alert(`${err.message}\n${err.stack}`);
-      functions.logger.error(`${err.message}\n${err.stack}`);
-    });
-    if (!rows) {
-      bot.alert("今日の個人スパチャ金額の集計は失敗に終わった");
-      return;
+  // 実行タイミングの前日分までの月間スパチャ(個人のチャンネルごとのスパチャ金額)を集計
+  const query = "SELECT ranking.supporterChannelId,ranking.supporterDisplayName,ranking.thumbnail,CONCAT(FORMAT(\"%'.0f\", ranking.superChatAmount), '円') as superChatAmount,ranking.totalSuperChatAmount,ranking.channelId,ranking.channelTitle,video.videoId    FROM (        SELECT process.supporterChannelId,sco.supporterDisplayName,sco.thumbnail,superChatAmount,total.total as totalSuperChatAmount,process.channelId, process.channelTitle        FROM (            SELECT sc.supporterChannelId,sum(sc.amount) as superChatAmount, sc.channelId, channelTitle            FROM `discord-315419.channels.superChats` as sc            JOIN (                SELECT channelId,channelTitle FROM `discord-315419.channels.videos`                WHERE category IN ('hololive', 'nijisanji')                GROUP BY channelId,channelTitle) as channel            ON sc.channelId = channel.channelId            WHERE sc.videoPublishedAt < TIMESTAMP_SUB(TIMESTAMP(DATE_ADD(LAST_DAY(DATE_SUB(CURRENT_DATE('Asia/Tokyo'), INTERVAL 1 DAY)), INTERVAL 1 DAY)), INTERVAL 4 HOUR) AND sc.videoPublishedAt >= TIMESTAMP_SUB(TIMESTAMP(DATE_SUB(DATE_ADD(LAST_DAY(DATE_SUB(CURRENT_DATE('Asia/Tokyo'), INTERVAL 1 DAY)), INTERVAL 1 DAY), INTERVAL 1 MONTH)), INTERVAL 4 HOUR)            GROUP BY supporterChannelId,channelId,sc.channelId,channelTitle        ) as process        JOIN (            select AS VALUE ARRAY_AGG(scb ORDER BY paidAt desc limit 1)[OFFSET(0)] from `discord-315419.channels.superChats` as scb where scb.videoPublishedAt < TIMESTAMP_SUB(TIMESTAMP(DATE_ADD(LAST_DAY(DATE_SUB(CURRENT_DATE('Asia/Tokyo'), INTERVAL 1 DAY)), INTERVAL 1 DAY)), INTERVAL 4 HOUR) AND scb.videoPublishedAt >= TIMESTAMP_SUB(TIMESTAMP(DATE_SUB(DATE_ADD(LAST_DAY(DATE_SUB(CURRENT_DATE('Asia/Tokyo'), INTERVAL 1 DAY)), INTERVAL 1 DAY), INTERVAL 1 MONTH)), INTERVAL 4 HOUR) group by supporterChannelId            ) as sco        ON sco.supporterChannelId = process.supporterChannelId        JOIN (            select supporterChannelId,CONCAT(FORMAT(\"%'.0f\", sum(amount)), '円') as total from `discord-315419.channels.superChats` WHERE videoPublishedAt < TIMESTAMP_SUB(TIMESTAMP(DATE_ADD(LAST_DAY(DATE_SUB(CURRENT_DATE('Asia/Tokyo'), INTERVAL 1 DAY)), INTERVAL 1 DAY)), INTERVAL 4 HOUR) AND videoPublishedAt >= TIMESTAMP_SUB(TIMESTAMP(DATE_SUB(DATE_ADD(LAST_DAY(DATE_SUB(CURRENT_DATE('Asia/Tokyo'), INTERVAL 1 DAY)), INTERVAL 1 DAY), INTERVAL 1 MONTH)), INTERVAL 4 HOUR) group by supporterChannelId        ) as total        ON process.supporterChannelId = total.supporterChannelId        ) as ranking        JOIN (            select * from (select supporterChannelId,channelId,videoId, ROW_NUMBER() over (PARTITION BY channelId,supporterChannelId order by sum(amount) desc ) as videoRank from `discord-315419.channels.superChats` where videoPublishedAt < TIMESTAMP_SUB(TIMESTAMP(DATE_ADD(LAST_DAY(DATE_SUB(CURRENT_DATE('Asia/Tokyo'), INTERVAL 1 DAY)), INTERVAL 1 DAY)), INTERVAL 4 HOUR) AND videoPublishedAt >= TIMESTAMP_SUB(TIMESTAMP(DATE_SUB(DATE_ADD(LAST_DAY(DATE_SUB(CURRENT_DATE('Asia/Tokyo'), INTERVAL 1 DAY)), INTERVAL 1 DAY), INTERVAL 1 MONTH)), INTERVAL 4 HOUR) group by supporterChannelId,channelId,videoId) where videoRank = 1        ) as video        ON ranking.supporterChannelId = video.supporterChannelId and ranking.channelId = video.channelId        ORDER BY ranking.supporterChannelId, ranking.superChatAmount desc";
+  const rows = await exec(bigQuery, query).catch((err) => {
+    functions.logger.error(`${err.message}\n${err.stack}`);
+  });
+  if (!rows) {
+    return;
+  }
+  const group = rows.reduce((result: any, row: any) => {
+    const groupId = getGroupId(row.supporterChannelId);
+    if (result[groupId] === undefined) {
+      result[groupId] = "";
     }
-    const group = rows.reduce((result: any, row: any) => {
-      const groupId = getGroupId(row.supporterChannelId);
-      if (result[groupId] === undefined) {
-        result[groupId] = "";
-      }
-      result[groupId] += rowToTsv(row);
-      return result;
-    }, {});
-    for await (const key of Object.keys(group)) {
-      await upload(group[key], "monthly.tsv", `user/${key}/`, 3600);
-    }
-  } catch (err) {
-    bot.alert(`${err.message}\n${err.stack}`);
-    throw err;
+    result[groupId] += rowToTsv(row);
+    return result;
+  }, {});
+  for await (const key of Object.keys(group)) {
+    await upload(group[key], "monthly.tsv", `user/${key}/`, 3600);
   }
 };
 
