@@ -333,8 +333,11 @@ const processChats = (chats: Array<any>, chatIds: Array<string|null>) => {
         const amountText = renderer.purchaseAmountText.simpleText;
         const amountinfo = stringToAmount(rate, amountText);
         const id = renderer.id;
-        const message = isSticker ? null : renderer.message ? renderer.message.runs[0].text : "";
-
+        const messagesToString = (result: string, m: any) => {
+          result += m.text || m.emoji?.shortcuts[0];
+          return result;
+        };
+        const message = isSticker ? null : renderer.message ? renderer.message.runs.reduce(messagesToString, "") : "";
         if (!superchats[id]) {
           superchats[id] = {} as SuperChat;
         }
