@@ -299,7 +299,7 @@ const chatDisabled = (source: string) => {
 };
 
 const isVideo = (json: any) => {
-  return json.contents.twoColumnBrowseResultsRenderer !== undefined;
+  return !json.contents.twoColumnWatchNextResults.results.results.contents.find((c: any) => c.videoPrimaryInfoRenderer).videoPrimaryInfoRenderer.dateText.simpleText.includes("配信");
 };
 
 const findContinuation = (json: any) => {
