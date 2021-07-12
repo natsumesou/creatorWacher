@@ -32,6 +32,14 @@ export const analyzeChats = async (message: Message) => {
       await bot.message(formatMessage(stream, result.stream));
     }
     await updateStream(stream, result.stream);
+
+    const now = new Date();
+    const publishedAt = stream.get("publishedAt").toDate();
+    const passed = passedDays(now, publishedAt);
+    // チャットの取得に1日以上かかった場合は通知する
+    if (passed > 1) {
+      bot.activity(`チャットデータの取得に ${passed}日 以上かかりました\n` + generateURL(stream.id));
+    }
   } catch (err) {
     if (err instanceof ChatNotFoundError) {
       if (stream.get("chatAvailable") !== false || stream.get("chatAvailable") !== false) {
@@ -165,7 +173,8 @@ const passedDays = (now: Date, publishedAt: Date) => {
 
 const getDateDiff = (now: Date, old: Date, unitMillisec: number) => {
   const millisBetween = now.getTime() - old.getTime();
-  return Math.abs(millisBetween / unitMillisec);
+  const roundBase = 100;
+  return Math.round(Math.abs(millisBetween / unitMillisec) * roundBase) / roundBase;
 };
 
 const formatMessage = (snapshot: DocumentSnapshot, chats: any) => {
