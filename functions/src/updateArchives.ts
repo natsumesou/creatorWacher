@@ -93,5 +93,5 @@ const publishAnalyzeStream = async (videoId: string, channelId: string) => {
     videoId: videoId,
     channelId: channelId,
   };
-  topic.publish(Buffer.from(JSON.stringify(obj)));
+  await topic.publish(Buffer.from(JSON.stringify(obj)));
 };

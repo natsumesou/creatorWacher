@@ -9,12 +9,12 @@ export const publishCreatorsWatch = async () => {
 
   const pubsub = new PubSub({projectId: process.env.GCP_PROJECT});
   const topic = await pubsub.topic(WATCH_TOPIC);
-  channels.forEach((channel) => {
+  for (const channel of channels.docs) {
     const obj = {
       id: channel.id,
       category: channel.get("category"),
     };
-    topic.publish(Buffer.from(JSON.stringify(obj)));
-  });
+    await topic.publish(Buffer.from(JSON.stringify(obj)), {});
+  }
   return;
 };
