@@ -13,7 +13,9 @@ export const ChangeType = {
 type ChangeType = typeof ChangeType[keyof typeof ChangeType];
 
 const errorHandler = (err: Error, message?: string|null) => {
-  throw err;
+  const error = new Error(message ? message + "\n" + err.message : err.message);
+  error.stack = err.stack;
+  throw error;
 };
 
 const dataset = "channels";
@@ -28,7 +30,7 @@ export const exportStreamsToBigQuery = async (change: Change<DocumentSnapshot>, 
     const changeType = getChangeType(change);
     await migrateStreamsToBigQuery(channel, [change.after], changeType);
   } catch (err) {
-    errorHandler(err);
+    errorHandler(err, `videoId: ${change.before.id}`);
   }
 };
 
