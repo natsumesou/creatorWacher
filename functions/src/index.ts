@@ -26,6 +26,6 @@ const strongRuntimeOpts: RuntimeOptions = {
 export const PublishCreatorsWatchFunction = functions.runWith(weakRuntimeOpts).region(REGION).pubsub.schedule("every 30 minutes").onRun(publishCreatorsWatch);
 export const UpdateArchivesFunction = functions.runWith({...strongRuntimeOpts, ...{timeoutSeconds: 120}}).region(REGION).pubsub.topic(WATCH_TOPIC).onPublish(updateArchives);
 export const AnalyzeChatsFunction = functions.runWith(strongRuntimeOpts).region(REGION).pubsub.topic(ANALYZE_TOPIC).onPublish(analyzeChats);
-export const CalcIndivisualSuperChats = functions.runWith({...strongRuntimeOpts, ...{timeoutSeconds: 120}}).region(REGION).pubsub.schedule("40 10 * * *").timeZone("Asia/Tokyo").onRun(calcIndivisualSuperChats);
+export const CalcIndivisualSuperChats = functions.runWith({...strongRuntimeOpts, ...{timeoutSeconds: 120}}).region(REGION).pubsub.schedule("49 10 * * *").timeZone("Asia/Tokyo").onRun(calcIndivisualSuperChats);
 export const ExportStreamsToBigQuery = functions.runWith(weakRuntimeOpts).region(REGION).firestore.document("channels/{channelId}/streams/{videoId}").onWrite(exportStreamsToBigQuery);
 export const ExportSuperChatsToBigQuery = functions.runWith(weakRuntimeOpts).region(REGION).firestore.document("channels/{channelId}/streams/{videoId}/superChats/{superChatId}").onWrite(exportSuperChatsToBigQuery);
