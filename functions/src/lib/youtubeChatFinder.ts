@@ -136,7 +136,7 @@ const fetchChatsParallel = async (videoId: string, streamLengthSec: number, conc
 };
 
 const getChatRequestParams = (html: string, json: any) => {
-  if (chatDisabled(html)) {
+  if (chatDisabled(html) || isVideo(json)) {
     return null;
   }
   const apiKey = findKey("INNERTUBE_API_KEY", html);
@@ -296,6 +296,10 @@ const fetchChatData = async (apiKey: string, continuation: string, client: strin
 
 const chatDisabled = (source: string) => {
   return source.match(/この動画ではチャットのリプレイを利用できません|この動画のチャットのリプレイはオフになっています/) !== null;
+};
+
+const isVideo = (json: any) => {
+  return json.contents.twoColumnBrowseResultsRenderer !== undefined;
 };
 
 const findContinuation = (json: any) => {
