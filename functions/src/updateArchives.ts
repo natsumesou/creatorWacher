@@ -24,12 +24,15 @@ export const updateArchives = async (message: Message) => {
     if (err instanceof ChannelNotExistError) {
       const message = err.message + "\n<" + CHANNEL_ENDPOINT + channel.id + ">";
       await bot.activity(message);
+      functions.logger.error(message);
     } else if (err instanceof InvalidChannelJsonError) {
       // たまにチャンネル動画ページのJSONが空になる事があるので無視する
       // 万が一これで本当のエラーを握りつぶしている可能性がないように一応厳密にチェックはしている…
+      const message = err.message + "\n<" + CHANNEL_ENDPOINT + channel.id + ">";
+      functions.logger.warn(message);
     } else {
       const message = err.message + "\n<" + CHANNEL_ENDPOINT + channel.id + ">\n" + err.stack;
-      throw new Error(message);
+      functions.logger.error(message);
     }
   }
 };
