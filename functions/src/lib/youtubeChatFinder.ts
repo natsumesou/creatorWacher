@@ -299,7 +299,7 @@ const chatDisabled = (source: string) => {
 };
 
 const isVideoAndChatDisabled = (json: any) => {
-  if (json.contents.twoColumnWatchNextResults.conversationBar?.liveChatRenderer) {
+  if (json.contents.twoColumnWatchNextResults.conversationBar?.liveChatRenderer !== undefined) {
     return false;
   }
   return !json.contents.twoColumnWatchNextResults.results.results.contents.find((c: any) => c.videoPrimaryInfoRenderer).videoPrimaryInfoRenderer.dateText.simpleText.includes("配信");
