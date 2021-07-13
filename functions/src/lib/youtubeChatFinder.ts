@@ -136,7 +136,7 @@ const fetchChatsParallel = async (videoId: string, streamLengthSec: number, conc
 };
 
 const getChatRequestParams = (html: string, json: any) => {
-  if (chatDisabled(html) || isVideo(json)) {
+  if (chatDisabled(html) || isVideoAndChatDisabled(json)) {
     return null;
   }
   const apiKey = findKey("INNERTUBE_API_KEY", html);
@@ -298,7 +298,10 @@ const chatDisabled = (source: string) => {
   return source.match(/この動画ではチャットのリプレイを利用できません|この動画のチャットのリプレイはオフになっています/) !== null;
 };
 
-const isVideo = (json: any) => {
+const isVideoAndChatDisabled = (json: any) => {
+  if (json.contents.twoColumnWatchNextResults.conversationBar?.liveChatRenderer) {
+    return false;
+  }
   return !json.contents.twoColumnWatchNextResults.results.results.contents.find((c: any) => c.videoPrimaryInfoRenderer).videoPrimaryInfoRenderer.dateText.simpleText.includes("配信");
 };
 
