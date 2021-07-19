@@ -6,6 +6,7 @@ import {sleep} from "./lib/utility";
 export const calcIndivisualSuperChats = async () => {
   const projectId = process.env.GCLOUD_PROJECT;
   const bigQuery = new BigQuery({projectId: projectId});
+  const now = new Date();
 
   // 実行タイミングの前日分までの月間スパチャ(個人のチャンネルごとのスパチャ金額)を集計
   const query = "SELECT  ranking.supporterChannelId,  ranking.supporterDisplayName,  ranking.thumbnail,  CASE WHEN ranking.superChatAmount is NULL THEN '0円' ELSE CONCAT(FORMAT(\"%'.0f\", ranking.superChatAmount), '円') END as superChatAmount,  CASE WHEN ranking.totalSuperChatAmount is NULL THEN '0円' ELSE ranking.totalSuperChatAmount END AS totalSuperChatAmount,  ranking.channelId,  ranking.channelTitle,  video.videoId FROM (  SELECT    sco.supporterChannelId,    sco.supporterDisplayName,    sco.thumbnail,    superChatAmount,    total.total AS totalSuperChatAmount,    process.channelId,    process.channelTitle  FROM (    SELECT      AS VALUE ARRAY_AGG(scb      ORDER BY        paidAt DESC      LIMIT        1)[    OFFSET      (0)]    FROM      `discord-315419.channels.superChats` AS scb    GROUP BY      supporterChannelId ) AS sco  LEFT JOIN (    SELECT      sc.supporterChannelId,      SUM(sc.amount) AS superChatAmount,      sc.channelId,      channelTitle    FROM      `discord-315419.channels.superChats` AS sc    JOIN (      SELECT        channelId,        channelTitle      FROM        `discord-315419.channels.videos`      WHERE        category IN ('hololive',          'nijisanji')      GROUP BY        channelId,        channelTitle) AS channel    ON      sc.channelId = channel.channelId    WHERE videoPublishedAt < TIMESTAMP_SUB(TIMESTAMP(DATE_ADD(LAST_DAY(DATE_SUB(CURRENT_DATE('Asia/Tokyo'), INTERVAL 1 DAY)), INTERVAL 1 DAY)), INTERVAL 4 HOUR)    AND videoPublishedAt >= TIMESTAMP_SUB(TIMESTAMP(DATE_SUB(DATE_ADD(LAST_DAY(DATE_SUB(CURRENT_DATE('Asia/Tokyo'), INTERVAL 1 DAY)), INTERVAL 1 DAY), INTERVAL 1 MONTH)), INTERVAL 4 HOUR)    GROUP BY      supporterChannelId,      channelId,      sc.channelId,      channelTitle ) AS process  ON    sco.supporterChannelId = process.supporterChannelId  LEFT JOIN (    SELECT      supporterChannelId,      CONCAT(FORMAT(\"%'.0f\", SUM(amount)), '円') AS total,    FROM      `discord-315419.channels.superChats`    WHERE      videoPublishedAt < TIMESTAMP_SUB(TIMESTAMP(DATE_ADD(LAST_DAY(DATE_SUB(CURRENT_DATE('Asia/Tokyo'), INTERVAL 1 DAY)), INTERVAL 1 DAY)), INTERVAL 4 HOUR)      AND videoPublishedAt >= TIMESTAMP_SUB(TIMESTAMP(DATE_SUB(DATE_ADD(LAST_DAY(DATE_SUB(CURRENT_DATE('Asia/Tokyo'), INTERVAL 1 DAY)), INTERVAL 1 DAY), INTERVAL 1 MONTH)), INTERVAL 4 HOUR)    GROUP BY      supporterChannelId) AS total  ON    process.supporterChannelId = total.supporterChannelId ) AS ranking LEFT JOIN (  SELECT    *  FROM (    SELECT      supporterChannelId,      channelId,      videoId,      ROW_NUMBER() OVER (PARTITION BY channelId, supporterChannelId ORDER BY SUM(amount) DESC ) AS videoRank    FROM      `discord-315419.channels.superChats`    WHERE      videoPublishedAt < TIMESTAMP_SUB(TIMESTAMP(DATE_ADD(LAST_DAY(DATE_SUB(CURRENT_DATE('Asia/Tokyo'), INTERVAL 1 DAY)), INTERVAL 1 DAY)), INTERVAL 4 HOUR)      AND videoPublishedAt >= TIMESTAMP_SUB(TIMESTAMP(DATE_SUB(DATE_ADD(LAST_DAY(DATE_SUB(CURRENT_DATE('Asia/Tokyo'), INTERVAL 1 DAY)), INTERVAL 1 DAY), INTERVAL 1 MONTH)), INTERVAL 4 HOUR)    GROUP BY      supporterChannelId,      channelId,      videoId)  WHERE    videoRank = 1 ) AS video ON  ranking.supporterChannelId = video.supporterChannelId  AND ranking.channelId = video.channelId ORDER BY  ranking.supporterChannelId,  ranking.superChatAmount DESC";
@@ -20,7 +21,7 @@ export const calcIndivisualSuperChats = async () => {
     if (result[groupId] === undefined) {
       result[groupId] = "";
     }
-    result[groupId] += rowToTsv(row);
+    result[groupId] += rowToTsv(row, now);
     return result;
   }, {});
   for await (const key of Object.keys(group)) {
@@ -32,8 +33,8 @@ const getGroupId = (id: string) => {
   return id.slice(0, 3);
 };
 
-const rowToTsv = (row: any) => {
-  return `${row.supporterChannelId}\t${row.supporterDisplayName}\t${row.thumbnail}\t${row.superChatAmount}\t${row.totalSuperChatAmount}\t${row.channelId}\t${row.channelTitle}\t${row.videoId}\n`;
+const rowToTsv = (row: any, now: Date) => {
+  return `${row.supporterChannelId}\t${row.supporterDisplayName}\t${row.thumbnail}\t${row.superChatAmount}\t${row.totalSuperChatAmount}\t${row.channelId}\t${row.channelTitle}\t${row.videoId}\t${now.getTime()}\n`;
 };
 
 const exec = async (bigQuery: BigQuery, query: string, retryCount = 0) => {
