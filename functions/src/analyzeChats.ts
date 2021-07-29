@@ -4,6 +4,7 @@ import {Bot} from "./lib/discordNotify";
 import {DocumentSnapshot} from "firebase-functions/lib/providers/firestore";
 import * as admin from "firebase-admin";
 import {Message} from "firebase-functions/lib/providers/pubsub";
+import {credential, projectId} from "./const";
 
 export const analyzeChats = async (message: Message) => {
   const metadata = messageToJSON(message);
@@ -58,12 +59,9 @@ export const analyzeChats = async (message: Message) => {
  * ローカルで分割せずに最初からシーケンシャルに取得していく
  * 多分ログデータが正常にソートされずに取得できてしまうのが問題っぽい(分割すると半分ぐらいのチャットがロストする)
  * ※実行時間がかかりすぎるので必ずローカルで処理すること
- * @param {string} message channelId,videoIdのjson stringを入れる
+ * @param {string} message channelId,videoIdのjson stringを入れる  analyzeChatsManually('{"channelId": "xxx", "videoId": "xxx"}')
  */
 export const analyzeChatsManually = async (message: string) => {
-  const projectId = "discord-315419";
-  const credential = "./discord-315419-firebase-adminsdk-pszz7-25277621db.json";
-
   admin.initializeApp({
     projectId: projectId,
     credential: admin.credential.cert(credential),

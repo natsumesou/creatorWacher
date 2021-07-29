@@ -4,6 +4,7 @@ import {Change, EventContext} from "firebase-functions";
 import {BigQuery} from "@google-cloud/bigquery";
 import * as admin from "firebase-admin";
 import {sleep} from "./lib/utility";
+import {credential, projectId} from "./const";
 
 export const ChangeType = {
   CREATE: "create",
@@ -34,9 +35,38 @@ export const exportStreamsToBigQuery = async (change: Change<DocumentSnapshot>, 
   }
 };
 
+export const exportStreamsToBigQueryManually = async (channelId: string, videoId: string) => {
+  try {
+    admin.instanceId(); // initializeAppしていない場合はエラーになるので初期化する
+  } catch (err) {
+    admin.initializeApp({
+      projectId: projectId,
+      credential: admin.credential.cert(credential),
+    });
+  }
+
+  const db = admin.firestore();
+  const streamRef = db.collection(`channels/${channelId}/streams`).doc(videoId);
+  const stream = await streamRef.get().catch((err) => {
+    console.error(err.message + "\n" + err.stack);
+  });
+  if (!stream || !stream.exists) {
+    console.log("videoIdが存在しません");
+    return;
+  }
+  const channel = await stream.ref.parent.parent?.get();
+  if (!channel || !channel.exists) {
+    console.log("channelIdが存在しません");
+    return;
+  }
+
+  await migrateStreamsToBigQuery(channel, [stream], ChangeType.CREATE);
+  console.log("exported to BigQuery");
+};
+
 export const migrateStreamsToBigQuery = async (channel: DocumentSnapshot, snapshots: DocumentSnapshot[], changeType: ChangeType) => {
   try {
-    const projectId = process.env.GCLOUD_PROJECT;
+    const projectId = process.env.GCLOUD_PROJECT || admin.instanceId().app.options.projectId;
     const bigQuery = new BigQuery({projectId: projectId});
     const table = "videos";
 
