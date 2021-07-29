@@ -110,8 +110,25 @@ export const exportSuperChatsToBigQuery = async (change: Change<DocumentSnapshot
   }
 };
 
+export const exportSuperChatsToBigQueryManually = async (channelId: string, videoId: string) => {
+  try {
+    admin.instanceId(); // initializeAppしていない場合はエラーになるので初期化する
+  } catch (err) {
+    admin.initializeApp({
+      projectId: projectId,
+      credential: admin.credential.cert(credential),
+    });
+  }
+
+  const db = admin.firestore();
+  const superChatsRef = db.collection(`channels/${channelId}/streams/${videoId}/superChats`);
+  const superChats = await superChatsRef.get();
+  await migrateSuperChatsToBigQuery(superChats.docs, channelId, videoId, ChangeType.CREATE);
+  console.log("exported to BigQuery");
+};
+
 export const migrateSuperChatsToBigQuery = async (snapshots: DocumentSnapshot[], channelId: string, videoId: string, changeType: ChangeType) => {
-  const projectId = process.env.GCLOUD_PROJECT;
+  const projectId = process.env.GCLOUD_PROJECT || admin.instanceId().app.options.projectId;
   const bigQuery = new BigQuery({projectId: projectId});
   const table = "superChats";
 

@@ -60,12 +60,19 @@ export const analyzeChats = async (message: Message) => {
  * 多分ログデータが正常にソートされずに取得できてしまうのが問題っぽい(分割すると半分ぐらいのチャットがロストする)
  * ※実行時間がかかりすぎるので必ずローカルで処理すること
  * @param {string} message channelId,videoIdのjson stringを入れる  analyzeChatsManually('{"channelId": "xxx", "videoId": "xxx"}')
+ * @param {number} streamLengthSec
+ * @param {number} concurrency
  */
-export const analyzeChatsManually = async (message: string) => {
-  admin.initializeApp({
-    projectId: projectId,
-    credential: admin.credential.cert(credential),
-  });
+export const analyzeChatsManually = async (message: string, streamLengthSec = 0, concurrency = 1) => {
+  try {
+    admin.instanceId(); // initializeAppしていない場合はエラーになるので初期化する
+  } catch (err) {
+    admin.initializeApp({
+      projectId: projectId,
+      credential: admin.credential.cert(credential),
+    });
+  }
+
   const metadata = messageStringToJSON(message);
 
   const db = admin.firestore();
@@ -76,7 +83,7 @@ export const analyzeChatsManually = async (message: string) => {
   if (!stream || !stream.exists) {
     throw new Error(`動画データがfirestoreから取得できません: ${JSON.stringify(metadata)}`);
   }
-  const result = await findChatMessages(stream.id, 0, 1); // 分割しないので秒数0、concurrency 1で実行。
+  const result = await findChatMessages(stream.id, streamLengthSec, concurrency); // 分割しないので秒数0、concurrency 1で実行。
   console.log("save superChats");
   await saveSuperChats(metadata, result.superChats, true);
   console.log("update stream");
