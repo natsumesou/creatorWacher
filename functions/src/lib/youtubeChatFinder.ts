@@ -343,7 +343,7 @@ const processChats = (chats: Array<any>, chatIds: Array<string|null>) => {
         const messagesToString = (result: string, m: any) => {
           if (!m.text && !m.emoji?.shortcuts) {
             console.log("------------------------");
-            console.log(m.emoji);
+            console.log(JSON.stringify(m));
           }
           result += m.text || m.emoji?.shortcuts[0];
           return result;
