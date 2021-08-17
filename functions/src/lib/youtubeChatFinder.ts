@@ -346,7 +346,7 @@ const processChats = (chats: Array<any>, chatIds: Array<string|null>) => {
             return result;
           } catch (err) {
             console.error("-aaaaaaaaaaaaaaaaaaa-");
-            console.error(JSON.stringify(m));
+            throw new Error("エラー？ \n" + JSON.stringify(m));
           }
         };
         const message = isSticker ? null : renderer.message ? renderer.message.runs.reduce(messagesToString, "") : "";
