@@ -341,6 +341,10 @@ const processChats = (chats: Array<any>, chatIds: Array<string|null>) => {
         const amountinfo = stringToAmount(rate, amountText);
         const id = renderer.id;
         const messagesToString = (result: string, m: any) => {
+          if (!m.text && !m.emoji?.shortcuts) {
+            console.log("------------------------");
+            console.log(m.emoji);
+          }
           result += m.text || m.emoji?.shortcuts[0];
           return result;
         };
