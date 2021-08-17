@@ -222,7 +222,7 @@ const fetchChats = async (data: any, chatIds: Array<string|null>) => {
 };
 
 const fetchChat = async (data: any, chatIds: Array<string|null>) => {
-  console.log("fetch continuation: " + data.continuation);
+  console.debug("fetch continuation: " + data.continuation);
   const chatdataResponse = await fetchChatData(data.apiKey, data.continuation, data.client);
   const chatActions = chatdataResponse.data.continuationContents.liveChatContinuation.actions;
 
@@ -342,8 +342,8 @@ const processChats = (chats: Array<any>, chatIds: Array<string|null>) => {
         const id = renderer.id;
         const messagesToString = (result: string, m: any) => {
           if (!m.text && !m.emoji?.shortcuts) {
-            console.log("------------------------");
-            console.log(JSON.stringify(m));
+            console.error("-aaaaaaaaaaaaaaaaaaa-");
+            console.error(JSON.stringify(m));
           }
           result += m.text || m.emoji?.shortcuts[0];
           return result;
