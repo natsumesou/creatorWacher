@@ -355,7 +355,7 @@ const processChats = (chats: Array<any>, chatIds: Array<string|null>) => {
         }
         const meta = {
           supporterChannelId: renderer.authorExternalChannelId,
-          supporterDisplayName: renderer.authorName.simpleText,
+          supporterDisplayName: renderer.authorName ? renderer.authorName.simpleText : "",
           paidAt: new Date(parseInt(renderer.timestampUsec.slice(0, -3))),
           amount: amountinfo.amount,
           unit: amountinfo.unit,
