@@ -67,7 +67,7 @@ const parseJSONtoFindStreams = (json: any) => {
     // 動画が1つもない場合(音楽系チャンネルだとたまに検索でヒットするけど動画ページが空の場合がある)
   }
   if (!videos.itemSectionRenderer.contents[0].gridRenderer) {
-    throw new Error("why not items?\n" + JSON.stringify(videos.itemSectionRenderer));
+    return []; // 動画が１つもない場合は空配列を返す
   }
   return videos.itemSectionRenderer.contents[0].gridRenderer.items.reduce((result: Array<any>, item: any) => {
     // live予定やプレミアム公開、動画の場合はスキップし続ける
