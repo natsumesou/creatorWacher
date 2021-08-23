@@ -60,7 +60,7 @@ const parseJSONtoFindStreams = (json: any) => {
     throw new InvalidChannelJsonError("チャンネル動画のJSONデータが正常なコンテンツを返していません\n" + JSON.stringify(json));
   }
   if (channelClosed(json)) {
-    throw new ChannelNotExistError("このチャンネルは存在しません");
+    throw new ChannelNotExistError(json.alerts[0].alertRenderer?.text?.simpleText);
   }
   const videos = json.contents.twoColumnBrowseResultsRenderer.tabs[1].tabRenderer.content.sectionListRenderer.contents[0];
   if (videos.itemSectionRenderer.contents[0].gridRenderer === undefined) {
@@ -85,7 +85,9 @@ const invalidJSONPayload = (json: any) => {
 
 const channelClosed = (json: any) => {
   if (json.alerts && json.alerts.length > 0) {
-    return json.alerts[0].alertRenderer?.text?.simpleText?.includes("このチャンネルは存在しません");
+    const text = json.alerts[0].alertRenderer?.text?.simpleText || "";
+    return text.includes("このチャンネルは存在しません") ||
+      text.includes("このアカウントを停止しました");
   }
   return false;
 };
