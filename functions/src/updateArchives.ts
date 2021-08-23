@@ -23,7 +23,7 @@ export const updateArchives = async (message: Message) => {
   } catch (err) {
     if (err instanceof ChannelNotExistError) {
       const message = err.message + "\n<" + CHANNEL_ENDPOINT + channel.id + ">";
-      await bot.activity(message);
+      await bot.alert(message);
       functions.logger.warn(message);
     } else if (err instanceof InvalidChannelJsonError) {
       // たまにチャンネル動画ページのJSONが空になる事があるので無視する
