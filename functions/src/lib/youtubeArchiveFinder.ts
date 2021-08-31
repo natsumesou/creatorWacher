@@ -21,6 +21,7 @@ export const findArchivedStreams = async (channelId: string) => {
     subscribeCount: subscribeCount,
     streams: streams,
   };
+  console.log(result);
   return result;
 };
 
@@ -80,7 +81,8 @@ const parseJSONtoFindStreams = (json: any) => {
 };
 
 const invalidJSONPayload = (json: any) => {
-  return Object.keys(json).length === 1 && Object.prototype.hasOwnProperty.call(json, "responseContext");
+  return (Object.keys(json).length === 1 && Object.prototype.hasOwnProperty.call(json, "responseContext")) ||
+    !Object.prototype.hasOwnProperty.call(json, "contents");
 };
 
 const channelClosed = (json: any) => {
