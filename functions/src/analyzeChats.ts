@@ -8,6 +8,7 @@ import {credential, projectId} from "./const";
 
 export const analyzeChats = async (message: Message) => {
   const metadata = messageToJSON(message);
+  functions.logger.info(`analyze chats for channels/${metadata.channelId}/streams/${metadata.videoId}`);
 
   const db = admin.firestore();
   const streamRef = db.collection(`channels/${metadata.channelId}/streams`).doc(metadata.videoId);
